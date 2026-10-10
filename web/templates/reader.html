@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}阅读 · {{ app_name }}{% endblock %}
+{% block content %}
+<div class="reader">
+  <header class="reader__bar">
+    <button class="btn btn--sm" id="closeReader">← 返回</button>
+    <span class="reader__title" id="readerTitle">加载中…</span>
+    <span class="reader__chip" id="chapInfo" hidden></span>
+    <span class="reader__chip" id="pageInfo">- / -</span>
+    <span class="spacer"></span>
+    <button class="btn btn--sm" id="prevChapBtn" hidden>上一章</button>
+    <button class="btn btn--sm" id="nextChapBtn" hidden>下一章</button>
+    <button class="btn btn--sm" id="overviewBtn" title="缩略图览：一屏多页，点击定位">览图</button>
+    <button class="icon-btn" id="zoomOut" title="缩小">−</button>
+    <span class="reader__chip" id="zoomVal">100%</span>
+    <button class="icon-btn" id="zoomIn" title="放大">＋</button>
+  </header>
+  <div class="reader__stage" id="readerStage"></div>
+  <div class="reader__grid" id="readerGrid" hidden></div>
+  <div class="reader__rail" id="readerRail" title="点按 / 拖动定位页"><i></i></div>
+  <footer class="reader__foot">
+    <button class="btn" id="prevBtn">上一页</button>
+    <span class="reader__hint muted">← → 翻页 · 滚轮滑动翻页 / 右键+滚轮缩放 · 拖动右侧滑轨定位 · 览图一屏多页</span>
+    <button class="btn" id="nextBtn">下一页</button>
+  </footer>
+</div>
+{% endblock %}

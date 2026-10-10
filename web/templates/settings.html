@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}设置 · {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>设置</h1>
+  <p class="muted">按分类进入 · 改动即时生效</p>
+</header>
+
+<!-- ══ 一级：分类入口 ══ -->
+<div id="setHome" class="settings-entries">
+  <button class="entry-card" data-group="appearance">
+    <span class="entry-card__icon" style="background:#7C6BF0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 2-2 0-1.5-1.5-1.5-1.5-3 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5c0-3.5-4-6.2-9-6.2z"/><circle cx="7.5" cy="11" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="11" r="1"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">外观</span>
+      <span class="entry-card__desc" id="sum-appearance">主题</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+
+  <button class="entry-card" data-group="library">
+    <span class="entry-card__icon" style="background:#3B82F6">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M18 20V6"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">书架</span>
+      <span class="entry-card__desc" id="sum-library">云同步 · 订阅巡检</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+
+  <button class="entry-card" data-group="search">
+    <span class="entry-card__icon" style="background:#06B6D4">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">搜索</span>
+      <span class="entry-card__desc" id="sum-search">排序 · 屏蔽规则 · 黑名单</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+
+  <button class="entry-card" data-group="reader">
+    <span class="entry-card__icon" style="background:#F59E0B">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c2-1.5 5-2 8-2v16c-3 0-6 .5-8 2-2-1.5-5-2-8-2V3c3 0 6 .5 8 2z"/><path d="M12 5v16"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">阅读</span>
+      <span class="entry-card__desc" id="sum-reader">章节提醒 · 滚轮行为</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+
+  <button class="entry-card" data-group="download">
+    <span class="entry-card__icon" style="background:#10B981">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">下载</span>
+      <span class="entry-card__desc" id="sum-download">并发数 · 图片画质</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+
+  <button class="entry-card" data-group="about">
+    <span class="entry-card__icon" style="background:#64748B">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.5" r=".6" fill="currentColor"/></svg>
+    </span>
+    <span class="entry-card__txt">
+      <span class="entry-card__title">关于</span>
+      <span class="entry-card__desc">版本 · 占用 · 数据目录</span>
+    </span>
+    <span class="entry-card__arrow">›</span>
+  </button>
+</div>
+
+<!-- ══ 二级：外观 ══ -->
+<div class="settings-sub" id="set-appearance" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">外观</h2>
+  </div>
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>主题</b><small>跟随系统 / 浅色 / 深色</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setThemeSeg">
+          <button class="seg-item" data-v="system">跟随系统</button>
+          <button class="seg-item" data-v="light">浅色</button>
+          <button class="seg-item" data-v="dark">深色</button>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 二级：书架（云同步 + 订阅巡检） ══ -->
+<div class="settings-sub" id="set-library" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">书架</h2>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>每行列数</b><small>书架网格一行显示几本（自动 = 随窗口宽度）</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setLibColsSeg">
+          <button class="seg-item" data-v="0">自动</button>
+          <button class="seg-item" data-v="4">4</button>
+          <button class="seg-item" data-v="5">5</button>
+          <button class="seg-item" data-v="6">6</button>
+          <button class="seg-item" data-v="7">7</button>
+          <button class="seg-item" data-v="8">8</button>
+        </span>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>已读完漫画</b><small>书架里看完的书怎么处理</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setLibFinSeg">
+          <button class="seg-item" data-v="divider">沉底 + 分隔线</button>
+          <button class="seg-item" data-v="hidden">隐藏</button>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label">
+        <b>收藏备份</b>
+        <small id="favBackupInfo">导出收藏为 JSON（兼容手机端「收藏备份」，可跨设备导入）</small>
+      </span>
+      <span class="setting-row__ctl">
+        <button class="btn btn--sm" id="favExportBtn">导出收藏</button>
+        <button class="btn btn--sm" id="favImportBtn">导入收藏</button>
+        <input type="file" id="favImportFile" accept=".json,application/json" hidden>
+      </span>
+    </div>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label">
+        <b>云同步</b>
+        <small>把「看过的漫画 JM 号」备份到你的服务器（只存数字 ID，手机 / PC 通用）</small>
+        <span class="sync-card__state"><span class="sync-dot" id="syncDot"></span><span id="syncStateTxt">未开启</span></span>
+      </span>
+      <span class="setting-row__ctl">
+        <label class="switch"><input type="checkbox" id="syncEnabled"><span class="track"></span></label>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>服务器地址</b><small class="sync-mask" id="syncUrlTxt">-</small></span>
+      <span class="setting-row__ctl"><button class="btn btn--sm" id="syncEditUrl">编辑</button></span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>同步密钥</b><small class="sync-mask" id="syncTokenTxt">-</small></span>
+      <span class="setting-row__ctl"><button class="btn btn--sm" id="syncEditToken">编辑</button></span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>立即同步</b><small id="syncLastTxt">尚未同步</small></span>
+      <span class="setting-row__ctl"><button class="btn btn--primary btn--sm" id="syncNowBtn">立即同步</button></span>
+    </div>
+    <div class="sync-result" id="syncResult" hidden></div>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>订阅巡检</b><small>自动检查关注作者的新作（每小时一次）</small></span>
+      <span class="setting-row__ctl">
+        <input id="subAuthorInput" class="input input--line" placeholder="输入作者名订阅…" style="width:200px">
+        <button class="btn btn--primary btn--sm" id="subAddBtn">订阅</button>
+        <button class="btn btn--sm" id="subPollBtn">立即巡检</button>
+      </span>
+    </div>
+    <div class="sub-list" id="subList"></div>
+    <div class="empty-hint" id="subEmpty">还没有订阅作者</div>
+
+    <div class="section-subhead">新作记录</div>
+    <div class="sub-updates" id="subUpdatesList"></div>
+    <div class="empty-hint" id="subUpdatesEmpty">暂无新作记录（巡检发现后在这里展示）</div>
+    <div class="batch-actions">
+      <span class="spacer"></span>
+      <button class="btn btn--sm" id="subAllSeenBtn">全部已读</button>
+      <button class="btn btn--sm" id="subClearUpdatesBtn">清空新作</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 二级：搜索（含黑名单） ══ -->
+<div class="settings-sub" id="set-search" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">搜索</h2>
+  </div>
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>默认排序</b><small>搜索结果的默认顺序</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setSortSeg">
+          <button class="seg-item" data-v="mr">最新</button>
+          <button class="seg-item" data-v="mv">浏览量</button>
+          <button class="seg-item" data-v="mp">收藏量</button>
+        </span>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>屏蔽已下载</b><small>搜索结果里的已下载漫画</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setHideDlSeg">
+          <button class="seg-item" data-v="hide">隐藏</button>
+          <button class="seg-item" data-v="gray">灰显</button>
+          <button class="seg-item" data-v="off">不处理</button>
+        </span>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>屏蔽已看完</b><small>搜索结果里的已看完漫画</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setHideFinSeg">
+          <button class="seg-item" data-v="hide">隐藏</button>
+          <button class="seg-item" data-v="gray">灰显</button>
+          <button class="seg-item" data-v="off">不处理</button>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>每行列数</b><small>搜索结果网格一行显示几本（自动 = 随窗口宽度）</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setSearchColsSeg">
+          <button class="seg-item" data-v="0">自动</button>
+          <button class="seg-item" data-v="3">3</button>
+          <button class="seg-item" data-v="4">4</button>
+          <button class="seg-item" data-v="5">5</button>
+          <button class="seg-item" data-v="6">6</button>
+        </span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>黑名单</b><small>屏蔽作者 / 作品 / 标签，搜索与书架统一过滤</small></span>
+      <span class="setting-row__ctl">
+        <select id="blType" class="filter-select">
+          <option value="author">作者</option>
+          <option value="work">作品（JM 号）</option>
+          <option value="tag">标签</option>
+        </select>
+        <input id="blValue" class="input input--line" placeholder="要屏蔽的内容…" style="width:180px">
+        <button class="btn btn--primary btn--sm" id="blAddBtn">添加</button>
+      </span>
+    </div>
+    <div class="bl-list" id="blList"></div>
+    <div class="empty-hint" id="blEmpty">黑名单为空</div>
+  </div>
+</div>
+
+<!-- ══ 二级：阅读 ══ -->
+<div class="settings-sub" id="set-reader" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">阅读</h2>
+  </div>
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>章节边界提醒</b><small>翻到首/末页时提示「已经是第一/最后一页」</small></span>
+      <span class="setting-row__ctl">
+        <label class="switch"><input type="checkbox" id="setChapToast"><span class="track"></span></label>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>滚轮行为</b><small>阅读器里滚动滚轮时做什么</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setWheelSeg">
+          <button class="seg-item" data-v="page">滑动翻页</button>
+          <button class="seg-item" data-v="zoom">以光标为中心缩放</button>
+          <button class="seg-item" data-v="scroll">上下滚动</button>
+        </span>
+        <small class="muted" style="display:block;margin-top:6px">任何模式下按住右键 + 滚轮 = 以光标为中心缩放</small>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>览图列数</b><small>阅读器「览图」缩略图一屏几列（1 = 自适应）</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setPpsSeg">
+          <button class="seg-item" data-v="1">1</button>
+          <button class="seg-item" data-v="2">2</button>
+          <button class="seg-item" data-v="3">3</button>
+          <button class="seg-item" data-v="4">4</button>
+          <button class="seg-item" data-v="5">5</button>
+          <button class="seg-item" data-v="6">6</button>
+        </span>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>进度滑轨颜色</b><small>阅读器右侧细进度条的颜色</small></span>
+      <span class="setting-row__ctl">
+        <span class="swatches" id="setRailColor">
+          <button class="swatch" data-c="#7B6FE0" style="--sw:#7B6FE0" title="默认紫"></button>
+          <button class="swatch" data-c="#4C8DFF" style="--sw:#4C8DFF" title="蓝"></button>
+          <button class="swatch" data-c="#26C6DA" style="--sw:#26C6DA" title="青"></button>
+          <button class="swatch" data-c="#4CAF50" style="--sw:#4CAF50" title="绿"></button>
+          <button class="swatch" data-c="#FF9800" style="--sw:#FF9800" title="橙"></button>
+          <button class="swatch" data-c="#EC407A" style="--sw:#EC407A" title="粉"></button>
+          <input type="color" id="setRailColorCustom" title="自定义颜色" value="#7B6FE0">
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 二级：下载 ══ -->
+<div class="settings-sub" id="set-download" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">下载</h2>
+  </div>
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>下载并发数</b><small>同时下载的最大本数</small></span>
+      <span class="setting-row__ctl">
+        <span class="chip-row" id="setConcurrencyChips">
+          <button class="chip" data-v="2">2</button>
+          <button class="chip" data-v="3">3</button>
+          <button class="chip" data-v="4">4</button>
+          <button class="chip" data-v="5">5</button>
+          <button class="chip" data-v="6">6</button>
+          <button class="chip" data-v="8">8</button>
+        </span>
+      </span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>图片画质</b><small>下载后的图片压缩程度（原画不重压缩）</small></span>
+      <span class="setting-row__ctl">
+        <span class="seg" id="setQualitySeg">
+          <button class="seg-item" data-v="original">原画</button>
+          <button class="seg-item" data-v="high">高</button>
+          <button class="seg-item" data-v="medium">中</button>
+          <button class="seg-item" data-v="low">低</button>
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 二级：关于 ══ -->
+<div class="settings-sub" id="set-about" hidden>
+  <div class="settings-sub__head">
+    <button class="settings-sub__back" data-back>←</button>
+    <h2 class="settings-sub__title">关于</h2>
+  </div>
+  <div class="card setting-card">
+    <div class="setting-row">
+      <span class="setting-row__label"><b>JM 轻量版</b><small>从零重写的漫画阅读 / 下载 / 管理工具</small></span>
+      <span class="setting-row__ctl"><span class="muted" id="aboutVersion">v{{ app_version }}</span></span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>数据目录</b><small id="aboutDataDir">-</small></span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>存储占用明细</b><small id="aboutStorageTotal">-</small></span>
+    </div>
+    <div class="storage-list" id="aboutStorageList">
+      <div class="storage-row"><div class="storage-row__name muted">计算中…</div></div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-row__label"><b>技术栈</b></span>
+      <span class="setting-row__ctl"><span class="muted">Flask + pywebview + SQLite</span></span>
+    </div>
+  </div>
+</div>
+{% endblock %}

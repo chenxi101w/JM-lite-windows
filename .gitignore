@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 构建产物
+dist_out/
+build_out/
+build/*.spec.bak
+
+# 虚拟环境
+.venv-build/
+
+# 运行时数据（便携式：exe 同级 UserData）
+UserData/
+TempCache/
+DownloadedComics/
+.app_url
+startup_error.log
+core/comics.db
+core/comics.db-*
+core/jm_option.yml

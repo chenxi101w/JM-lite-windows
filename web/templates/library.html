@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}书架 · {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>书架</h1>
+  <p class="muted">已下载漫画 · 拖到左侧分类归类</p>
+</header>
+
+<div class="lib-layout" id="shelfView">
+  <aside class="lib-side card">
+    <div class="lib-side__head">
+      <span class="lib-side__title">分类</span>
+      <button class="lib-iconbtn" id="newCatBtn" title="新建顶级分类">＋</button>
+    </div>
+    <div class="tree" id="catTree">
+      <div class="tree-empty muted">加载中…</div>
+    </div>
+  </aside>
+
+  <div class="lib-main">
+    <div class="lib-head">
+      <h2 class="lib-head__title">
+        <span id="currentCatName">全部漫画</span>
+        <span class="lib-head__count" id="currentCatCount"></span>
+      </h2>
+      <div class="lib-head__acts">
+        <select class="filter-select" id="shelfSort" title="书架排序">
+          <option value="download_desc">最新下载</option>
+          <option value="read_desc">最近阅读</option>
+          <option value="title_asc">标题</option>
+          <option value="author_asc">作者</option>
+        </select>
+        <button class="btn btn--sm" id="selectBtn">选择</button>
+        <button class="btn btn--sm recycle-entry" id="recycleBtn" title="回收站：删除/看完的书保留 7 天，可恢复或重新下载">
+          回收站 <span class="side-badge" id="recycleBadge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="sel-toolbar" id="selToolbar" hidden>
+      <span class="sel-toolbar__count">已选 <em id="selCount">0</em> 本</span>
+      <span class="spacer"></span>
+      <button class="btn btn--sm" data-sel="all">全选</button>
+      <button class="btn btn--sm" data-sel="unread">未读</button>
+      <button class="btn btn--sm" data-sel="read">已读</button>
+      <button class="btn btn--sm btn--danger" id="selDeleteBtn">删除所选</button>
+      <button class="btn btn--sm btn--ghost" id="selExitBtn">✕ 退出</button>
+    </div>
+
+    <div class="comic-grid" id="comicGrid"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <div class="empty-state__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M18 20V6"/></svg>
+      </div>
+      <p class="empty-state__title">这里还是空的</p>
+      <p class="muted">去「搜索」页下载一些漫画吧</p>
+    </div>
+  </div>
+</div>
+
+<div id="recycleView" hidden>
+  <div class="lib-head">
+    <h2 class="lib-head__title">
+      <span>回收站</span>
+      <span class="lib-head__count" id="recycleCount"></span>
+    </h2>
+    <div class="lib-head__acts">
+      <span class="muted">删除 / 看完的书保留 7 天，可恢复或重新下载</span>
+      <button class="btn btn--sm" id="recycleBackBtn">← 返回书架</button>
+    </div>
+  </div>
+  <div class="comic-grid" id="recycleGrid"></div>
+  <div class="empty-state" id="recycleEmpty" hidden>
+    <div class="empty-state__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>
+    </div>
+    <p class="empty-state__title">回收站是空的</p>
+    <p class="muted">删除或看完整本的漫画会在这里保留 7 天</p>
+  </div>
+</div>
+{% endblock %}

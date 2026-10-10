@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}订阅 · {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>订阅</h1>
+  <p class="muted">关注作者的作品 · 未看的新作在前，已看的老作在后</p>
+  <button class="btn btn--sm" id="subManageBtn">管理订阅</button>
+</header>
+
+<div id="subPageRoot">
+  <div class="empty-state" id="subEmpty" hidden>
+    <div class="empty-state__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <p class="empty-state__title">还没有订阅任何作者</p>
+    <p class="muted">去「设置 → 书架 → 订阅巡检」添加你关注的作者</p>
+  </div>
+
+  <div id="subAuthorBlocks"></div>
+</div>
+
+<style>
+  .sub-author-block { margin-bottom: 30px; }
+  .sub-author-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 4px 0 12px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--border, #ececf1);
+  }
+  .sub-author-name { font-size: 18px; margin: 0; }
+  .sub-author-count { color: var(--muted, #8a8a99); font-size: 13px; }
+  .sub-author-grid { min-height: 40px; }
+  .sub-block-loading, .sub-block-error { padding: 14px 4px; font-size: 14px; }
+  .sub-block-error { color: #c0392b; }
+</style>
+{% endblock %}

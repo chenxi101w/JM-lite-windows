@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}搜索 · {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>搜索</h1>
+  <p class="muted">关键词 / 标签 / 作者 / 纯数字 ID</p>
+</header>
+
+<section class="search-bar card">
+  <div class="search-hero">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
+    <input id="searchInput" placeholder="输入关键词、标签、作者名或 JM 号…" autocomplete="off" spellcheck="false">
+    <button id="searchBtn" class="btn btn--primary">搜索</button>
+  </div>
+  <div class="search-ctl">
+    <div class="seg" id="scopeTabs">
+      <button class="seg-item is-active" data-scope="keyword">关键词</button>
+      <button class="seg-item" data-scope="tag">标签</button>
+      <button class="seg-item" data-scope="author">作者</button>
+    </div>
+    <label class="filter-group">
+      <span class="filter-label">排序</span>
+      <select id="sortBy" class="filter-select">
+        <option value="mr">最新</option>
+        <option value="mv">浏览量</option>
+        <option value="mp">收藏量</option>
+        <option value="tr">标题</option>
+      </select>
+    </label>
+    <label class="filter-group" id="tagModeGroup" hidden>
+      <span class="filter-label">标签匹配</span>
+      <select id="tagMode" class="filter-select">
+        <option value="or">任一命中（或）</option>
+        <option value="and">全部命中（且）</option>
+      </select>
+    </label>
+    <span class="search-time muted" id="searchTime"></span>
+  </div>
+</section>
+
+<section class="results">
+  <div class="results-head">
+    <span class="muted" id="resultCount"></span>
+  </div>
+  <div class="comic-grid" id="comicGrid"></div>
+  <div class="loading" id="loading" hidden><span class="spinner"></span><span>搜索中…</span></div>
+  <div class="load-more" id="loadMore" hidden><button class="btn" id="loadMoreBtn">加载更多</button></div>
+  <div class="empty-state" id="emptyState" hidden>
+    <div class="empty-state__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.4-3.4"/></svg>
+    </div>
+    <p class="empty-state__title" id="emptyTitle">没有结果</p>
+    <p class="muted" id="emptySub">换个关键词或 JM 号试试</p>
+  </div>
+</section>
+{% endblock %}

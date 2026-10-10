@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}下载 · {{ app_name }}{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>下载</h1>
+  <p class="muted">批量下载 · 进行中任务 · 历史记录</p>
+</header>
+
+<section class="section">
+  <div class="section-head">
+    <h3 class="section-title">批量下载</h3>
+  </div>
+  <div class="card batch-bar">
+    <textarea id="batchInput" class="input" rows="3"
+      placeholder="输入 JM 号：每行一个，或用逗号 / 空格分隔…"></textarea>
+    <div class="batch-actions">
+      <span class="muted" id="batchCount"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="batchClearBtn">清空</button>
+      <button class="btn btn--primary" id="batchDownloadBtn">下载全部</button>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h3 class="section-title">进行中</h3>
+    <span class="muted" id="activeCount"></span>
+  </div>
+  <div class="dl-list" id="activeList"></div>
+  <div class="empty-hint" id="activeEmpty">暂无进行中的任务</div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <h3 class="section-title">历史记录</h3>
+    <span class="muted" id="historyCount"></span>
+    <span class="spacer"></span>
+    <button class="btn btn--sm" id="clearHistoryBtn">清空</button>
+  </div>
+  <div class="dl-list" id="historyList"></div>
+  <div class="empty-hint" id="historyEmpty">暂无下载历史</div>
+</section>
+{% endblock %}
