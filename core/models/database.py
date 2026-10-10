@@ -587,7 +587,8 @@ def update_category(cat_id: int, name: str = None, parent_id=None) -> bool:
         params.append(name)
     if parent_id is not None:
         fields.append("parent_id = ?")
-        params.append(parent_id)
+        # 0 = 移到顶层（语义化），落库存 NULL（categories.id 无 0，直接存 0 会撞外键）
+        params.append(parent_id or None)
     if not fields:
         return False
     params.append(cat_id)

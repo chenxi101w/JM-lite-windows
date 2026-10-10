@@ -1547,7 +1547,8 @@
           '<button data-delcat="' + opts.id + '" title="删除分类">🗑</button>' +
           '</span>';
       }
-      return '<div class="' + cls + '" data-cat="' + (opts.virtual ? '' : opts.id) + '"' +
+      return '<div class="' + cls + '"' + (opts.virtual ? '' : ' draggable="true"') +
+        ' data-cat="' + (opts.virtual ? '' : opts.id) + '"' +
         (opts.virtual ? ' data-virt="' + opts.virt + '"' : '') +
         ' style="padding-left:' + (10 + (opts.depth || 0) * 14) + 'px">' +
         '<span class="tree-name">' + esc(opts.name) + '</span>' +
@@ -1826,7 +1827,27 @@
         if (actBtn.dataset.act === 'fav') {
           var on = actBtn.dataset.on !== '1';
           api('/api/status/' + jmId + '/favorite', { method: 'POST', body: { favorite: on } })
-            .then(function (r) { if (r.success) refresh(); });
+            .then(function (r) {
+              if (!r.success) { toast(r.message || '操作失败'); return; }
+              // 原地更新，不整格重渲染（避免全部封面重载闪烁）
+              var comic = allComics.find(function (c) { return c.id === jmId; });
+              if (comic) comic.favorite = on;
+              actBtn.classList.toggle('on', on);
+              actBtn.dataset.on = on ? '1' : '0';
+              var card = actBtn.closest('.comic-card');
+              if (card) {
+                var badge = card.querySelector('.status-badge--fav');
+                if (on && !badge) {
+                  var b = document.createElement('span');
+                  b.className = 'status-badge status-badge--fav';
+                  b.textContent = '★';
+                  card.insertBefore(b, card.firstChild);
+                } else if (!on && badge) badge.remove();
+              }
+              // 收藏视图取消收藏 → 移出该卡片；其余视图只重画左侧树（无封面，不闪）
+              if (view.type === 'fav' && !on && card) card.remove();
+              renderTree();
+            });
         } else if (actBtn.dataset.act === 'del') {
           if (!confirm('删除本地并移入回收站？7 天内可恢复或重新下载。')) return;
           api('/api/delete/' + jmId, { method: 'DELETE' })
@@ -1843,6 +1864,7 @@
     grid.addEventListener('dragstart', function (e) {
       var card = e.target.closest('.comic-card');
       if (!card) return;
+      dragCatId = null;   // 本次拖的是漫画，不是分类
       e.dataTransfer.setData('text/plain', card.dataset.jmId);
       e.dataTransfer.effectAllowed = 'move';
     });
@@ -1875,32 +1897,86 @@
       renderGrid();
     });
 
+    // ── 分类拖拽：① 漫画卡片拖到分类行 = 归类；② 分类行拖到另一分类行 = 调层级 ──
+    // 两者共用 text/plain：漫画=纯数字，分类='cat:<id>'（parseInt 兼容旧漫画逻辑）
+    var dragCatId = null;   // 正在拖动的分类 id（null = 拖的是漫画）
+
+    function isDescendantCat(catId, targetId) {
+      var node = findNode(treeData, catId);
+      if (!node) return false;
+      var found = false;
+      walkTree([node], function (n) { if (n.id === targetId) found = true; });
+      return found;
+    }
+
+    treeEl.addEventListener('dragstart', function (e) {
+      var row = e.target.closest('.tree-row');
+      if (!row || !row.dataset.cat) return;   // 虚拟视图不可拖
+      dragCatId = parseInt(row.dataset.cat, 10);
+      e.dataTransfer.setData('text/plain', 'cat:' + dragCatId);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    treeEl.addEventListener('dragend', function () {
+      dragCatId = null;
+      treeEl.querySelectorAll('.tree-row.drop-over, .tree-row.drop-invalid')
+        .forEach(function (x) { x.classList.remove('drop-over', 'drop-invalid'); });
+    });
+
     treeEl.addEventListener('dragover', function (e) {
       var row = e.target.closest('.tree-row');
       if (!row) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
-      treeEl.querySelectorAll('.tree-row.drop-over').forEach(function (x) { x.classList.remove('drop-over'); });
+      treeEl.querySelectorAll('.tree-row.drop-over, .tree-row.drop-invalid')
+        .forEach(function (x) { x.classList.remove('drop-over', 'drop-invalid'); });
+      // 分类拖拽守卫：不能落到自己或自己的子孙上（会成环）
+      if (dragCatId != null) {
+        var tid = row.dataset.cat ? parseInt(row.dataset.cat, 10) : 0;
+        if (tid && (tid === dragCatId || isDescendantCat(dragCatId, tid))) {
+          row.classList.add('drop-invalid');
+          e.dataTransfer.dropEffect = 'none';
+          return;
+        }
+      }
       row.classList.add('drop-over');
     });
     treeEl.addEventListener('dragleave', function (e) {
       var row = e.target.closest('.tree-row');
-      if (row) row.classList.remove('drop-over');
+      if (row) row.classList.remove('drop-over', 'drop-invalid');
     });
     treeEl.addEventListener('drop', async function (e) {
       var row = e.target.closest('.tree-row');
       if (!row) return;
       e.preventDefault();
-      row.classList.remove('drop-over');
-      var jmId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      row.classList.remove('drop-over', 'drop-invalid');
+      var raw = e.dataTransfer.getData('text/plain') || '';
+
+      // ── 分类 → 分类/顶层：调整层级 ──
+      if (raw.indexOf('cat:') === 0 || dragCatId != null) {
+        var cid = dragCatId != null ? dragCatId : parseInt(raw.slice(4), 10);
+        dragCatId = null;
+        if (!cid) return;
+        var pid = row.dataset.cat ? parseInt(row.dataset.cat, 10) : 0;   // 虚拟行/顶层 = 0
+        if (pid && (pid === cid || isDescendantCat(cid, pid))) { toast('不能移到自己的子分类里'); return; }
+        var node = findNode(treeData, cid);
+        if (node && ((node.parent_id || 0) === (pid || 0))) return;      // 层级没变
+        var targetName = pid ? ((findNode(treeData, pid) || {}).name || ('#' + pid)) : '顶层';
+        var r = await api('/api/categories/' + cid, { method: 'PUT', body: { parent_id: pid } });
+        if (r.success) { toast('已移动到「' + targetName + '」'); refresh(); }
+        else toast(r.message || '移动失败');
+        return;
+      }
+
+      // ── 漫画 → 分类：归类 ──
+      var jmId = parseInt(raw, 10);
       if (!jmId) return;
-      var cid = row.dataset.virt ? [] : [parseInt(row.dataset.cat, 10)];
+      var cidList = row.dataset.virt ? [] : [parseInt(row.dataset.cat, 10)];
       try {
-        var r = await api('/api/comic/' + jmId + '/categories', { method: 'PUT', body: { category_ids: cid } });
-        if (r.success) {
-          toast(cid.length ? '已归类' : '已移入未归类');
+        var r2 = await api('/api/comic/' + jmId + '/categories', { method: 'PUT', body: { category_ids: cidList } });
+        if (r2.success) {
+          toast(cidList.length ? '已归类' : '已移入未归类');
           refresh();
-        } else toast(r.message || '归类失败');
+        } else toast(r2.message || '归类失败');
       } catch (err) { toast('归类失败：' + err.message); }
     });
 

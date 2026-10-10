@@ -726,6 +726,7 @@ body.selection-mode .shelf-act { display: none; }
 .tree-row:hover { background: var(--surface-hover); color: var(--text-1); }
 .tree-row.on { background: var(--grad-soft); color: var(--accent); font-weight: 750; }
 .tree-row.drop-over { background: var(--accent-soft-strong); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tree-row.drop-invalid { opacity: .45; cursor: not-allowed; }
 .tree-row--virt .tree-name { font-weight: 700; }
 .tree-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree-count {
