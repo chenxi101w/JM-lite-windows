@@ -445,8 +445,8 @@ body.is-pjax .main { opacity: .5; }
 .status-badge--fin { top: 9px; left: 9px; background: color-mix(in srgb, var(--success) 92%, #000); }
 .status-badge--dl + .status-badge--fin { top: 37px; left: 9px; }
 .status-badge--fav {
-  top: 9px; right: 9px; background: color-mix(in srgb, var(--warning) 92%, #000);
-  font-size: 12px; padding: 2px 8px;
+  top: 9px; right: 9px; background: color-mix(in srgb, #f56a8d 88%, #000);
+  font-size: 11px; padding: 2px 8px;
 }
 
 /* 卡片悬停操作（书架） */
@@ -461,7 +461,7 @@ body.is-pjax .main { opacity: .5; }
 .shelf-act:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 .shelf-act:hover svg { transform: scale(1.12); }
 .shelf-act:active { transform: scale(.92); }
-.shelf-act.on { color: var(--warning); border-color: transparent; background: var(--warning-soft); }
+.shelf-act.on { color: #f0537a; border-color: transparent; background: color-mix(in srgb, #f0537a 14%, transparent); }
 .shelf-act.on svg { fill: currentColor; animation: popIn var(--t-normal) var(--ease-spring); }
 .shelf-act--del:hover { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
 .shelf-progress { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 3px 9px; border-radius: var(--radius-pill); }
@@ -655,8 +655,10 @@ body.selection-mode .shelf-act { display: none; }
   border-radius: var(--radius-lg);
 }
 .reader__img { position: absolute; left: 0; top: 0; user-select: none; max-width: none; max-height: none; }
-/* 连排模式：整章多页纵向排一列，滚轮原生滚动 */
+/* 连排模式：整章多页纵向排一列，滚轮原生滚动（隐藏原生滚动条——右侧已有主题滑轨，否则双进度条） */
 .reader__page { width: var(--pw, 100%); margin: 0 auto 6px; line-height: 0; }
+.reader__stage.is-col { scrollbar-width: none; }
+.reader__stage.is-col::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .reader__stage.is-col .reader__img {
   position: static; display: block; width: 100%; height: auto;
   max-width: none; max-height: none; background: var(--surface-3);

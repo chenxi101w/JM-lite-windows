@@ -1629,7 +1629,7 @@
     function shelfCardHtml(c) {
       var id = c.id;
       var badges = '';
-      if (c.favorite) badges += '<span class="status-badge status-badge--fav">★</span>';
+      if (c.favorite) badges += '<span class="status-badge status-badge--fav">♥</span>';
       if (c.finished) badges += '<span class="status-badge status-badge--fin">已读完</span>';
       var pct = (c.pages && c.read_progress > 0) ? Math.min(100, Math.round(c.read_progress / c.pages * 100)) : 0;
       var progress = pct ? '<span class="shelf-progress">读至 ' + pct + '%</span>' : '';
@@ -1638,8 +1638,8 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></button>';
       var pagesTxt = (c.pages ? ' · ' + (c.pages || 0) + ' 页' : '');
-      var favSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">' +
-        '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      var favSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
       var delSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
       return '<div class="comic-card" draggable="true" data-jm-id="' + id + '">' +
@@ -1893,7 +1893,7 @@
                 if (on && !badge) {
                   var b = document.createElement('span');
                   b.className = 'status-badge status-badge--fav';
-                  b.textContent = '★';
+                  b.textContent = '♥';
                   card.insertBefore(b, card.firstChild);
                 } else if (!on && badge) badge.remove();
               }
