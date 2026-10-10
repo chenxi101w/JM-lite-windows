@@ -1983,8 +1983,11 @@
       handleDrop(row, e.dataTransfer ? e.dataTransfer.getData('text/plain') : '');
     });
 
-    // ── WebView2 拖拽补丁：WebView2 的 HTML5 DnD 有已知 bug（#2805，dragstart 不触发），
-    //    用 mousedown/mousemove/mouseup 模拟拖拽，落到同一套 handleDrop 逻辑上 ──
+    // ── WebView2 拖拽补丁 v2：WebView2 的 HTML5 DnD 半残——dragstart 会触发但
+    //    拖不动，还会留一个僵死的拖拽残影（用户实测）。对策：
+    //    ① 原生 DnD 一律 preventDefault 禁用（残影不再出现，真浏览器也不与模拟双路打架）；
+    //    ② mousedown/mousemove/mouseup 全程模拟拖拽，决策逻辑走 LibraryDrag 纯模块；
+    //    ③ 落点统一走 handleDrop。
     var mdrag = null;          // {src, x, y, started, payload, ghost}
     var mdragConsumed = false; // 拖拽结束后抑制紧随而来的 click（避免误开阅读页/误选中）
 
@@ -2005,15 +2008,16 @@
     function mdragMove(e) {
       if (!mdrag) return;
       if (!mdrag.started) {
-        if (Math.abs(e.clientX - mdrag.x) + Math.abs(e.clientY - mdrag.y) < 6) return;
+        if (!LibraryDrag.shouldBegin(e.clientX - mdrag.x, e.clientY - mdrag.y)) return;
         // 起拖：识别载荷（漫画卡片 or 分类行）
-        if (mdrag.src.classList.contains('comic-card')) {
-          mdrag.payload = mdrag.src.dataset.jmId;
-          dragCatId = null;
-        } else if (mdrag.src.dataset.cat) {
-          dragCatId = parseInt(mdrag.src.dataset.cat, 10);
-          mdrag.payload = 'cat:' + dragCatId;
-        } else { mdrag = null; return; }
+        var pl = LibraryDrag.resolvePayload({
+          isCard: mdrag.src.classList.contains('comic-card'),
+          jmId: mdrag.src.dataset.jmId,
+          catId: mdrag.src.dataset.cat
+        });
+        if (!pl) { mdrag = null; return; }
+        mdrag.payload = pl.payload;
+        dragCatId = pl.dragCatId;
         mdrag.started = true;
         mdragConsumed = true;
         var g = mdrag.src.cloneNode(true);
@@ -2033,7 +2037,7 @@
         .forEach(function (x) { x.classList.remove('drop-over', 'drop-invalid'); });
       if (row) {
         var tid = row.dataset.cat ? parseInt(row.dataset.cat, 10) : 0;
-        if (dragCatId != null && tid && (tid === dragCatId || isDescendantCat(dragCatId, tid))) {
+        if (LibraryDrag.targetState(dragCatId, tid, isDescendantCat) === 'invalid') {
           row.classList.add('drop-invalid');
         } else {
           row.classList.add('drop-over');
@@ -2046,7 +2050,7 @@
       var st = mdrag;
       mdrag = null;
       mdragCleanup(st);
-      if (!st.started) return;   // 没超过阈值 = 普通点击，放行
+      if (!LibraryDrag.shouldDrop(st.started)) return;   // 没超过阈值 = 普通点击，放行
       e.preventDefault();
       var hit = document.elementFromPoint(e.clientX, e.clientY);
       var row = hit && hit.closest ? hit.closest('.tree-row') : null;
@@ -2058,8 +2062,13 @@
     treeEl.addEventListener('mousedown', mdragBegin);
     document.addEventListener('mousemove', mdragMove);
     document.addEventListener('mouseup', mdragEnd);
-    // 真浏览器里原生 DnD 生效时（dragstart 会触发）放弃鼠标模拟，避免双路打架
-    document.addEventListener('dragstart', function () { mdrag = null; }, true);
+    // 原生 HTML5 DnD 全禁：WebView2 半残会留僵死残影，真浏览器里与鼠标模拟双路打架
+    grid.addEventListener('dragstart', function (e) { e.preventDefault(); }, true);
+    treeEl.addEventListener('dragstart', function (e) { e.preventDefault(); }, true);
+    // 拖拽中途焦点丢失（切窗/拖出窗口）也要清场
+    window.addEventListener('blur', function () {
+      if (mdrag) { mdragCleanup(mdrag); mdrag = null; dragCatId = null; }
+    });
     // 拖完吃掉 click：书架卡片点击会跳阅读器，这里拦一次
     grid.addEventListener('click', function (e) {
       if (mdragConsumed) { e.stopPropagation(); mdragConsumed = false; }

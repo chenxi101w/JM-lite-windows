@@ -41,11 +41,11 @@ REQUIRED_FILES = [
     "web/templates/base.html", "web/templates/search.html", "web/templates/library.html",
     "web/templates/downloads.html", "web/templates/reader.html", "web/templates/settings.html",
     "web/static/img/no_cover.svg",
-    "web/static/js/app.js", "web/static/js/reader-logic.js",
+    "web/static/js/app.js", "web/static/js/reader-logic.js", "web/static/js/library-drag-logic.js",
     "web/static/css/style.css", "web/static/img/app_icon.ico",
     "build/JMComicLite.spec", "build/_build.py", "build/requirements.txt",
     "docs/CHANGELOG.md", "docs/已知坑与发版铁律.md",
-    "tools/test_reader_logic.js",
+    "tools/test_reader_logic.js", "tools/test_library_drag_logic.js",
 ]
 
 
@@ -118,9 +118,14 @@ def test_js_symbols():
         check(sym in js, f"JS 符号存在：{sym}")
     # PJAX 关键契约：必须走局部换 .main，且下载页定时器要登记清理（防叠加卡死）
     check(".main'" in js and "replaceChild" in js, "PJAX：局部替换 .main 而非整页跳转")
-    # WebView2 拖拽补丁：HTML5 DnD 在 WebView2 失效（#2805），必须有鼠标事件模拟兜底
+    # WebView2 拖拽补丁：原生 DnD 必须禁用（WebView2 半残留僵死残影），落点统一走 handleDrop
     check("handleDrop(row, st.payload)" in js and "mdragConsumed" in js,
           "书架拖拽：WebView2 鼠标模拟补丁接入 handleDrop")
+    check("dragstart', function (e) { e.preventDefault(); }" in js,
+          "书架拖拽：原生 HTML5 DnD 已禁用（WebView2 半残防残影）")
+    check("library-drag-logic.js" in
+          open(os.path.join(ROOT, "web/templates/base.html"), encoding="utf-8").read(),
+          "书架拖拽：纯逻辑模块已引入 base.html")
     check("regCleanup(function () { clearInterval(_tActive)" in js,
           "PJAX：下载页定时器登记清理（防叠加）")
     # 阅读器滚轮契约：默认滑动翻页 + 右键滚轮缩放 + 屏蔽右键菜单
@@ -396,6 +401,20 @@ def test_reader_logic():
     n_ok = (r.stdout or "").count("[OK ]")
     check(r.returncode == 0, f"reader-logic 单测（node 真跑，{n_ok} 项）" +
           ("" if r.returncode == 0 else "\n" + (r.stdout or "")[-500:]))
+
+    # 书架拖拽纯逻辑单测（WebView2 鼠标模拟拖拽的决策层）
+    script2 = os.path.join(ROOT, "tools/test_library_drag_logic.js")
+    if not os.path.exists(script2):
+        check(False, "tools/test_library_drag_logic.js 存在")
+        return
+    try:
+        r2 = subprocess.run([node, script2], capture_output=True, text=True, timeout=60)
+    except Exception as e:
+        check(False, f"library-drag 单测无法执行：{e}")
+        return
+    n_ok2 = (r2.stdout or "").count("[OK ]")
+    check(r2.returncode == 0, f"library-drag 单测（node 真跑，{n_ok2} 项）" +
+          ("" if r2.returncode == 0 else "\n" + (r2.stdout or "")[-500:]))
 
 
 # ── H. 进度模型契约（直驱 cb，零网络）──────────────────────

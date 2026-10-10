@@ -1,5 +1,18 @@
 # 更新日志（CHANGELOG）
 
+## v2.13.8 — 2026-10-10
+
+> **拖拽补丁 v2（真机修复）**：v2.13.7 实测仍拖不动且卡片右下出现僵死残影——根因修正：WebView2 的 HTML5 DnD 不是「不触发」，而是**半残**（dragstart 触发、原生拖拽接管、但 drop 永远收不到）。上一版「dragstart 出现就放弃模拟」方向反了。
+
+### 修复
+- **原生 DnD 一律 `preventDefault` 禁用**（grid/tree capture 阶段）：残影不再出现，WebView2 与真浏览器统一走鼠标模拟，双路不再打架
+- 鼠标模拟全程接管：mousemove 在原生拖拽被取消后恢复正常，6px 阈值起拖 → 幽灵剪影 → 落点 handleDrop
+
+### 重构
+- 拖拽决策逻辑抽成**纯模块 `library-drag-logic.js`**（零 DOM）：`shouldBegin` / `resolvePayload` / `targetState` / `shouldDrop`，base.html 引入
+- 新增 node 单测 `tools/test_library_drag_logic.js`（18 项全绿）接入 selftest（约 98+ 项）
+- 拖拽中途窗口失焦（blur）清场，防残影残留
+
 ## v2.13.7 — 2026-10-10
 
 > **修复书架拖动失效**：WebView2 的 HTML5 拖拽有已知 bug（WebView2Feedback#2805，dragstart 不触发），改用鼠标事件模拟拖拽兜底。
