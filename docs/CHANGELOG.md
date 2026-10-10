@@ -1,5 +1,15 @@
 # 更新日志（CHANGELOG）
 
+## v2.13.7 — 2026-10-10
+
+> **修复书架拖动失效**：WebView2 的 HTML5 拖拽有已知 bug（WebView2Feedback#2805，dragstart 不触发），改用鼠标事件模拟拖拽兜底。
+
+### 实现
+- 拖拽落点逻辑抽成共用 `handleDrop(row, raw)`：HTML5 DnD 与鼠标模拟两条路共用一套归类/调层级代码
+- 鼠标模拟（WebView2 补丁）：`mousedown` 起手（≥6px 阈值判定，普通点击不受影响）→ `mousemove` 移动幽灵剪影 + 高亮目标行（含 `drop-invalid` 防环守卫）→ `mouseup` 落点走 `handleDrop`
+- 拖拽结束抑制紧随的 `click`（避免拖完误开阅读页/误选分类）
+- 真浏览器中原生 DnD 正常时（dragstart 会触发）自动放弃鼠标模拟，双路不打架
+
 ## v2.13.6 — 2026-10-10
 
 > 书架两处体验修复：**分类树支持拖拽调层级**（恢复旧版能力）+ **收藏不再整页闪烁**。

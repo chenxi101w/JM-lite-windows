@@ -118,6 +118,9 @@ def test_js_symbols():
         check(sym in js, f"JS 符号存在：{sym}")
     # PJAX 关键契约：必须走局部换 .main，且下载页定时器要登记清理（防叠加卡死）
     check(".main'" in js and "replaceChild" in js, "PJAX：局部替换 .main 而非整页跳转")
+    # WebView2 拖拽补丁：HTML5 DnD 在 WebView2 失效（#2805），必须有鼠标事件模拟兜底
+    check("handleDrop(row, st.payload)" in js and "mdragConsumed" in js,
+          "书架拖拽：WebView2 鼠标模拟补丁接入 handleDrop")
     check("regCleanup(function () { clearInterval(_tActive)" in js,
           "PJAX：下载页定时器登记清理（防叠加）")
     # 阅读器滚轮契约：默认滑动翻页 + 右键滚轮缩放 + 屏蔽右键菜单
