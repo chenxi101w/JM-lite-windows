@@ -50,6 +50,54 @@
   }
   App.toast = toast;
 
+  /* ── 美化确认弹窗（替代原生 confirm）────────────────────
+     confirmModal({ title, text, okText, icon }) → Promise<boolean>
+     icon: 'trash'(默认) | 'warn'                                          */
+  function confirmModal(opts) {
+    var icons = {
+      trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>',
+      warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+    };
+    var iconKey = opts.icon && icons[opts.icon] ? opts.icon : 'trash';
+    return new Promise(function (resolve) {
+      var overlay = document.createElement('div');
+      overlay.className = 'modal-overlay confirm-overlay';
+      overlay.innerHTML =
+        '<div class="modal confirm-modal">' +
+          '<div class="confirm-modal__badge">' + icons[iconKey] + '</div>' +
+          '<h3 class="confirm-modal__title">' + esc(opts.title || '确认操作') + '</h3>' +
+          '<p class="confirm-modal__text">' + (opts.html || esc(opts.text || '')) + '</p>' +
+          '<div class="confirm-modal__actions">' +
+            '<button class="btn" data-cm-no>取消</button>' +
+            '<button class="btn btn--danger" data-cm-yes>' + esc(opts.okText || '确认') + '</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      var done = false;
+      function finish(v) {
+        if (done) return;
+        done = true;
+        document.removeEventListener('keydown', onKey);
+        overlay.classList.add('is-leaving');
+        setTimeout(function () { overlay.remove(); resolve(v); }, 140);
+      }
+      function onKey(e) { if (e.key === 'Escape') finish(false); }
+      overlay.addEventListener('click', function (ev) {
+        if (ev.target === overlay || ev.target.closest('[data-cm-no]')) finish(false);
+        else if (ev.target.closest('[data-cm-yes]')) finish(true);
+      });
+      document.addEventListener('keydown', onKey);
+      // 默认焦点给取消（危险操作防手滑回车）
+      setTimeout(function () {
+        var no = overlay.querySelector('[data-cm-no]');
+        if (no) no.focus();
+      }, 0);
+    });
+  }
+  App.confirmModal = confirmModal;
+
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   function fmtBytes(n) {
@@ -1590,6 +1638,10 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
         '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></button>';
       var pagesTxt = (c.pages ? ' · ' + (c.pages || 0) + ' 页' : '');
+      var favSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">' +
+        '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      var delSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
       return '<div class="comic-card" draggable="true" data-jm-id="' + id + '">' +
         badges +
         '<div class="comic-card__coverwrap">' +
@@ -1603,8 +1655,9 @@
             '<span class="m-jm">JM' + id + '</span>' + pagesTxt + '</div>' +
           '<div class="shelf-actions">' +
             '<button class="shelf-act' + (c.favorite ? ' on' : '') + '" data-act="fav" data-id="' + id +
-              '" data-on="' + (c.favorite ? 1 : 0) + '" title="收藏">★</button>' +
-            '<button class="shelf-act" data-act="del" data-id="' + id + '" title="删除本地（移入回收站）">🗑</button>' +
+              '" data-on="' + (c.favorite ? 1 : 0) + '" title="收藏" aria-label="收藏">' + favSvg + '</button>' +
+            '<button class="shelf-act shelf-act--del" data-act="del" data-id="' + id +
+              '" title="删除本地（移入回收站）" aria-label="删除">' + delSvg + '</button>' +
             progress +
           '</div>' +
         '</div>' +
@@ -1814,7 +1867,7 @@
       if (btn) selectBy(btn.dataset.sel);
     });
 
-    grid.addEventListener('click', function (e) {
+    grid.addEventListener('click', async function (e) {
       var dlBtn = e.target.closest('[data-dl]');
       if (dlBtn) { e.preventDefault(); e.stopPropagation(); startDownload(dlBtn.dataset.dl, dlBtn.dataset.title); return; }
       var card = e.target.closest('.comic-card');
@@ -1849,7 +1902,13 @@
               renderTree();
             });
         } else if (actBtn.dataset.act === 'del') {
-          if (!confirm('删除本地并移入回收站？7 天内可恢复或重新下载。')) return;
+          e.preventDefault();
+          var ok = await confirmModal({
+            title: '删除这本漫画？',
+            html: '「' + esc((allComics.find(function (c) { return c.id === jmId; }) || {}).title || ('JM' + jmId)) + '」的本地文件将移入回收站，<b>7 天内</b>可恢复或重新下载。',
+            okText: '删除'
+          });
+          if (!ok) return;
           api('/api/delete/' + jmId, { method: 'DELETE' })
             .then(function (r) {
               if (r.success) { toast('已移入回收站'); refresh(); }
@@ -2092,7 +2151,13 @@
         var r = await api('/api/categories/' + catId + '?count_only=1');
         var cnt = (r.data && r.data.count) || 0;
         if (!cnt) {
-          if (!confirm('删除分类「' + name + '」？')) return;
+          var okDel = await confirmModal({
+            title: '删除分类「' + name + '」？',
+            text: '仅删除分类，不会删除分类下的漫画。',
+            okText: '删除',
+            icon: 'warn'
+          });
+          if (!okDel) return;
           var r2 = await api('/api/categories/' + catId, { method: 'DELETE', body: {} });
           if (r2.success) { toast('已删除分类'); refresh(); } else toast(r2.message || '删除失败');
           return;
