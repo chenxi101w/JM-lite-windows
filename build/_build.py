@@ -150,6 +150,30 @@ if os.path.isdir(src_dir):
     else:
         try:
             os.makedirs(SELF_USE_DIR, exist_ok=True)
+            # 程序目录（appdata/web）先整目录删除再复制——否则历史构建删掉的依赖
+            # （如 aiohttp）会以"残留"形式永远堆在部署目录里越积越脏。
+            for prog_dir in ("appdata", "web"):
+                d = os.path.join(SELF_USE_DIR, prog_dir)
+                if os.path.isdir(d):
+                    shutil.rmtree(d)
+            # 历史遗留的根目录空壳/旧库（真数据在 UserData/ 下），部署时顺手清掉
+            for legacy in ("DownloadedComics", "TempCache",
+                           os.path.join("core", "comics.db"), os.path.join("core", "comics.db-shm"),
+                           os.path.join("core", "comics.db-wal")):
+                p = os.path.join(SELF_USE_DIR, legacy)
+                try:
+                    if os.path.isfile(p):
+                        os.remove(p)
+                    elif os.path.isdir(p) and not os.listdir(p):
+                        os.rmdir(p)
+                except OSError:
+                    pass
+            try:
+                core_dir = os.path.join(SELF_USE_DIR, "core")
+                if os.path.isdir(core_dir) and not os.listdir(core_dir):
+                    os.rmdir(core_dir)
+            except OSError:
+                pass
             for item in os.listdir(src_dir):
                 if item in ("UserData", "TempCache"):
                     continue
@@ -160,7 +184,7 @@ if os.path.isdir(src_dir):
                     shutil.copytree(s, d, dirs_exist_ok=True)
                 else:
                     shutil.copy2(s, d)
-            print(f"[OK] 已部署自用版到: {SELF_USE_DIR}（其 UserData 原样保留）")
+            print(f"[OK] 已部署自用版到: {SELF_USE_DIR}（其 UserData 原样保留；appdata/web 已重建清残留）")
             try:
                 shutil.rmtree(src_dir)
                 print("[OK] 已清理 dist_out 的解包目录，该目录现在只放便携 zip")
