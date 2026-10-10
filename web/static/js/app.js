@@ -895,16 +895,21 @@
     var chapters = [], currentChapter = '1', currentChapterIndex = 0;
     var preloadCache = {};
     var PRELOAD_COUNT = 10, PRELOAD_CONCUR = 4;
-    var wheelMode = 'page';      // page=滑动翻页 / scroll=上下滚动 / zoom=以光标缩放（读设置）
+    var wheelMode = 'scroll';    // scroll=多页连排（默认）/ page=滑动翻页 / zoom=以光标缩放（读设置）
     var chapterToastEnabled = true;
+    // 连排模式状态：整章图片纵向排一列，滚轮原生滚动 = 翻页
+    var colEls = [];             // 每页 <img> 引用（与 pages 同序）
+    var colChapter = null;       // 连排列当前所属章节 id
+    var colAdvancing = false;    // 到底自动接下一章的防重入锁
+    var colPendingSeek = -1;     // 建列后待定位的页（-1 = 无）
 
     (async function () {
       try {
         var results = await Promise.all([api('/api/read/' + jmId), api('/api/settings')]);
         var r = results[0];
         var cfg = (results[1] || {}).data || {};
-        wheelMode = (cfg.reader_wheel_mode === 'scroll' || cfg.reader_wheel_mode === 'zoom')
-          ? cfg.reader_wheel_mode : 'page';
+        wheelMode = (cfg.reader_wheel_mode === 'page' || cfg.reader_wheel_mode === 'zoom')
+          ? cfg.reader_wheel_mode : 'scroll';
         chapterToastEnabled = cfg.reader_chapter_toast !== '0';
         railColor = cfg.reader_progress_color || RAIL_DEFAULT_COLOR;
         pps = Math.min(6, Math.max(1, parseInt(cfg.reader_pages_per_screen, 10) || 1));
@@ -930,6 +935,11 @@
           return;
         }
         var start = Math.min(Math.max(0, (d.read_progress || 0)), pages.length - 1);
+        // 连排模式：从中间页进入时先预载前几页，拿真实宽高做占位，定位才准
+        if (start > 0) {
+          await preloadImages(currentChapter, pages.slice(0, Math.min(start + 2, pages.length)))
+            .catch(function () {});
+        }
         renderPage(start);
       } catch (e) {
         stage.innerHTML = '<div class="empty-state"><p class="empty-state__title">加载失败</p><p class="muted">' +
@@ -978,10 +988,14 @@
       if (chapPop && !chapPop.contains(e.target) && e.target !== chapInfo) closeChapPop();
     });
 
-    /* ── 图片预加载 ───────────────────────────────────── */
+    /* ── 图片预加载（记录真实宽高：连排建列时用作占位比例，定位不漂移）── */
+    function cacheSlot(cid) {
+      return preloadCache[cid] || (preloadCache[cid] = { pages: [], images: new Set(), dims: {} });
+    }
+
     async function preloadImages(cid, pageList) {
       var slice = pageList.slice(0, PRELOAD_COUNT);
-      var cache = preloadCache[cid] || (preloadCache[cid] = { pages: [], images: new Set() });
+      var cache = cacheSlot(cid);
       var cursor = 0;
       async function worker() {
         while (cursor < slice.length) {
@@ -989,7 +1003,11 @@
           if (cache.images.has(p)) continue;
           await new Promise(function (resolve) {
             var img = new Image();
-            img.onload = img.onerror = function () { resolve(); };
+            img.onload = function () {
+              if (img.naturalWidth) cache.dims[p] = { w: img.naturalWidth, h: img.naturalHeight };
+              resolve();
+            };
+            img.onerror = function () { resolve(); };
             img.src = '/api/comic/' + jmId + '/page/' + p + '?chapter=' + encodeURIComponent(cid);
             cache.images.add(p);
           });
@@ -1008,7 +1026,7 @@
       var r = await api('/api/read/' + jmId + '/chapter/' + encodeURIComponent(cid));
       if (!r.success) return null;
       var cp = Array.isArray(r.data.current_chapter_pages) ? r.data.current_chapter_pages : [];
-      (preloadCache[cid] || (preloadCache[cid] = { pages: [], images: new Set() })).pages = cp;
+      cacheSlot(cid).pages = cp;
       return cp;
     }
 
@@ -1024,7 +1042,7 @@
         var r = await api('/api/read/' + jmId + '/chapter/' + encodeURIComponent(targetCid));
         if (!r.success) { toast('章节加载失败'); return false; }
         pages = Array.isArray(r.data.current_chapter_pages) ? r.data.current_chapter_pages : [];
-        var slot = preloadCache[targetCid] || (preloadCache[targetCid] = { pages: [], images: new Set() });
+        var slot = cacheSlot(targetCid);
         slot.pages = pages;
         currentChapterIndex = index;
         currentChapter = targetCid;
@@ -1111,6 +1129,7 @@
         markOverviewCurrent();
         return;
       }
+      if (isCol()) { colSeek(i); return; }
       stage.scrollTop = 0;
       stage.innerHTML = '';
       var spinner = document.createElement('div');
@@ -1135,6 +1154,110 @@
       if (pageInfo) pageInfo.textContent = (current + 1) + ' / ' + pages.length;
       updateRail();
       if (overview) markOverviewCurrent();
+    }
+
+    /* ── 连排模式（scroll）：整章一列，滚轮原生滚动 = 翻页 ── */
+    function isCol() { return wheelMode === 'scroll'; }
+
+    function buildColumn() {
+      colChapter = currentChapter;
+      colEls = [];
+      colAdvancing = false;
+      stage.classList.add('is-col');
+      stage.innerHTML = '';
+      stage.style.setProperty('--pw', Math.round(stage.clientWidth * zoom) + 'px');
+      var cache = cacheSlot(currentChapter);
+      pages.forEach(function (p, i) {
+        var wrap = document.createElement('div');
+        wrap.className = 'reader__page';
+        var img = document.createElement('img');
+        img.className = 'reader__img';
+        img.loading = 'lazy';
+        img.alt = '第 ' + (i + 1) + ' 页';
+        img.dataset.idx = String(i);
+        var dim = cache.dims[p];
+        // 占位比例：已知真实宽高用它，未知按 1.4 估（加载后自动纠正，防滚动漂移）
+        img.style.aspectRatio = dim ? (dim.w + '/' + dim.h) : '1.4';
+        img.onload = function () {
+          if (img.naturalWidth) {
+            cache.dims[p] = { w: img.naturalWidth, h: img.naturalHeight };
+            img.style.aspectRatio = '';
+          }
+        };
+        img.onerror = function () { wrap.classList.add('is-err'); };
+        img.src = '/api/comic/' + jmId + '/page/' + p + '?chapter=' + encodeURIComponent(currentChapter);
+        wrap.appendChild(img);
+        stage.appendChild(wrap);
+        colEls.push(img);
+      });
+      if (pageInfo) pageInfo.textContent = (current + 1) + ' / ' + pages.length;
+      updateRail();
+    }
+
+    function colSeek(i) {
+      i = Math.min(Math.max(0, i), Math.max(0, pages.length - 1));
+      if (colChapter !== currentChapter || !colEls.length) {
+        colPendingSeek = i;
+        buildColumn();
+        colApplyPendingSeek();
+        return;
+      }
+      var el = colEls[i];
+      if (el) {
+        stage.scrollTop = Math.max(0, el.offsetTop - 8);
+        colSync(i);   // 显式同步（滚动位置若恰好不变，scroll 事件不触发）
+      }
+    }
+
+    function colApplyPendingSeek() {
+      if (colPendingSeek < 0) return;
+      var i = colPendingSeek;
+      colPendingSeek = -1;
+      var el = colEls[i];
+      if (el) stage.scrollTop = Math.max(0, el.offsetTop - 8);
+      colSync(i);
+    }
+
+    function colSync(forceIdx) {
+      if (!pages.length) return;
+      var idx = (typeof forceIdx === 'number' && forceIdx >= 0)
+        ? forceIdx
+        : ReaderLogic.columnIndex(
+            stage.scrollTop, stage.clientHeight,
+            colEls.map(function (el) { return el.offsetTop; }),
+            colEls.map(function (el) { return el.offsetHeight || 0; }));
+      if (idx < 0) return;
+      if (idx !== current) {
+        current = idx;
+        maybePreload();
+        maybePrefetchCurrent();
+        saveProgressDebounced();
+        if (overview) markOverviewCurrent();
+      }
+      currentImg = colEls[current] || null;
+      if (pageInfo) pageInfo.textContent = (current + 1) + ' / ' + pages.length;
+      updateRail();
+      // 到底：非末章自动接下一章；末章标记读完
+      var atBottom = stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 4;
+      if (atBottom && current >= pages.length - 1) {
+        if (currentChapterIndex < chapters.length - 1) {
+          if (!colAdvancing) {
+            colAdvancing = true;
+            loadChapter(currentChapterIndex + 1).then(function (ok) {
+              colAdvancing = false;
+              if (ok) { zoom = 1; renderPage(0); }
+            });
+          }
+        } else {
+          markReadFinishedOnce();
+        }
+      }
+    }
+
+    function applyColZoom(newZoom) {
+      zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+      stage.style.setProperty('--pw', Math.round(stage.clientWidth * zoom) + 'px');
+      if (zoomVal) zoomVal.textContent = Math.round(zoom * 100) + '%';
     }
 
     /* ── 右侧进度滑轨（手机端 reader_progress_color 复刻）────── */
@@ -1282,8 +1405,12 @@
       });
     }
 
-    $('zoomIn').addEventListener('click', function () { applyZoom(zoom * 1.2); });
-    $('zoomOut').addEventListener('click', function () { applyZoom(zoom / 1.2); });
+    $('zoomIn').addEventListener('click', function () {
+      if (isCol()) applyColZoom(zoom * 1.2); else applyZoom(zoom * 1.2);
+    });
+    $('zoomOut').addEventListener('click', function () {
+      if (isCol()) applyColZoom(zoom / 1.2); else applyZoom(zoom / 1.2);
+    });
     $('closeReader').addEventListener('click', function () {
       if (history.length > 1) history.back();
       else location.href = '/library';
@@ -1293,6 +1420,14 @@
     // 这里只负责执行——右键+滚轮=缩放（任何模式）／page=滑动翻页／scroll／zoom
     var wheelAcc = 0, wheelLockUntil = 0;
     stage.addEventListener('wheel', function (e) {
+      // 连排模式：普通滚轮直接交给原生滚动（滚动即翻页），不拦截
+      if (isCol() && !(e.buttons & 2) && !e.ctrlKey) return;
+      // 连排 + 缩放（Ctrl+滚轮 / 右键+滚轮）
+      if (isCol()) {
+        e.preventDefault();
+        applyColZoom(zoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+        return;
+      }
       if (!currentImg) return;
       e.preventDefault();
       var rect = stage.getBoundingClientRect();
@@ -1317,6 +1452,10 @@
     }, { passive: false });
     // 右键仅用于配合滚轮缩放，屏蔽系统右键菜单
     stage.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    // 连排模式：滚动即翻页（当前页跟随视口，进度/滑轨/预读全部联动）
+    stage.addEventListener('scroll', function () {
+      if (isCol() && !overview && colEls.length) colSync();
+    }, { passive: true });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowLeft') renderPage(current - 1);
@@ -1832,7 +1971,7 @@
     var THEME_NAMES = { system: '跟随系统', light: '浅色', dark: '深色' };
     var SORT_NAMES = { mr: '最新', mv: '浏览量', mp: '收藏量' };
     var HIDE_NAMES = { hide: '隐藏', gray: '灰显', off: '不处理' };
-    var WHEEL_NAMES = { page: '滑动翻页', zoom: '以光标缩放', scroll: '上下滚动' };
+    var WHEEL_NAMES = { scroll: '上下连排', page: '滑动翻页', zoom: '以光标缩放' };
     var QUALITY_NAMES = { original: '原画', high: '高', medium: '中', low: '低' };
 
     /* ── hash 路由（一级 / 二级） ─────────────────────── */
@@ -2225,7 +2364,7 @@
         markChoice('setSortSeg', cfg.default_sort || 'mr');
         markChoice('setHideDlSeg', cfg.hide_downloaded_in_search || 'hide');
         markChoice('setHideFinSeg', cfg.hide_finished_in_search || 'hide');
-        markChoice('setWheelSeg', cfg.reader_wheel_mode || 'page');
+        markChoice('setWheelSeg', cfg.reader_wheel_mode || 'scroll');
         markChoice('setPpsSeg', cfg.reader_pages_per_screen || '1');
         markChoice('setLibColsSeg', cfg.library_columns || '0');
         markChoice('setLibFinSeg', cfg.library_finished || 'divider');

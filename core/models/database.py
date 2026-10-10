@@ -216,7 +216,7 @@ DEFAULT_CONFIGS = [
     ("sync_last_at", "0", "上次同步成功时间(ms)"),
     ("sync_last_result", "", "上次同步结果文案"),
     # ── 阅读器滚轮行为 ──
-    ("reader_wheel_mode", "zoom", "滚轮行为：zoom=以光标缩放 / scroll=上下滚动"),
+    ("reader_wheel_mode", "scroll", "滚轮行为：scroll=多页连排（默认）/ page=滑动翻页 / zoom=以光标缩放"),
 ]
 
 
@@ -234,6 +234,12 @@ def init_database() -> None:
             "INSERT OR IGNORE INTO system_config (key, value, description) VALUES (?, ?, ?)",
             (key, value, desc),
         )
+    # 一次性迁移：老默认「以光标缩放」→ 新默认「多页连排」（用户显式选过 page 的不动）
+    conn.execute(
+        "UPDATE system_config SET value='scroll', description=? "
+        "WHERE key='reader_wheel_mode' AND value='zoom'",
+        ("滚轮行为：scroll=多页连排（默认）/ page=滑动翻页 / zoom=以光标缩放",),
+    )
     conn.commit()
 
 

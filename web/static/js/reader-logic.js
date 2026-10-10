@@ -68,11 +68,36 @@
     }).join('');
   }
 
+  /**
+   * 连排模式：由滚动位置推当前页（0 基）。
+   * 取「视口顶部往下 30%（最少 80px）」落在哪一页的纵向区间内。
+   * @param {number} scrollTop stage.scrollTop
+   * @param {number} viewportH 视口高
+   * @param {number[]} tops 每页 offsetTop（升序）
+   * @param {number[]} heights 每页高（0 = 未加载占位）
+   * @returns {number} 无数据返回 -1；否则夹在 [0, 页数-1]
+   */
+  function columnIndex(scrollTop, viewportH, tops, heights) {
+    if (!tops || !tops.length) return -1;
+    var focus = scrollTop + Math.max(80, (viewportH || 0) * 0.3);
+    var idx = 0;
+    for (var i = 0; i < tops.length; i++) {
+      if (tops[i] <= focus) idx = i; else break;
+    }
+    if (heights && heights[idx] === 0) {
+      for (var j = idx; j > 0; j--) {
+        if (heights[j] > 0) { idx = j; break; }
+      }
+    }
+    return Math.min(idx, tops.length - 1);
+  }
+
   global.ReaderLogic = {
     WHEEL_ACC_THRESHOLD: WHEEL_ACC_THRESHOLD,
     WHEEL_FLIP_COOLDOWN: WHEEL_FLIP_COOLDOWN,
     resolveWheelAction: resolveWheelAction,
     railIndex: railIndex,
+    columnIndex: columnIndex,
     buildOverviewHtml: buildOverviewHtml
   };
 })(this);

@@ -121,7 +121,7 @@ def test_js_symbols():
     check("regCleanup(function () { clearInterval(_tActive)" in js,
           "PJAX：下载页定时器登记清理（防叠加）")
     # 阅读器滚轮契约：默认滑动翻页 + 右键滚轮缩放 + 屏蔽右键菜单
-    check("var wheelMode = 'page'" in js, "滚轮默认滑动翻页（page）")
+    check("var wheelMode = 'scroll'" in js, "滚轮默认连排滚动（scroll，多页一列）")
     rl_js = open(os.path.join(ROOT, "web/static/js/reader-logic.js"), encoding="utf-8").read()
     check("buttons & 2" in rl_js, "按住右键+滚轮 = 以光标缩放（reader-logic，已被单测覆盖）")
     check("stage.addEventListener('contextmenu'" in js, "阅读器屏蔽右键菜单")
@@ -351,7 +351,8 @@ def test_css_vars():
     #   --cols       览图固定列数（JS 注入，var(--cols, 6) 有兜底）
     #   --sw         色板圆点底色（内联 style="--sw:#xxx"）
     #   --lib-cols   书架每行列数（JS 注入，var(--lib-cols, auto-fill) 有兜底）
-    runtime_injected = {"--rail-color", "--cols", "--sw", "--lib-cols"}
+    #   --pw         连排模式页宽（JS setProperty 注入，var(--pw, 100%) 有兜底）
+    runtime_injected = {"--rail-color", "--cols", "--sw", "--lib-cols", "--pw"}
     missing = sorted(used - defined - runtime_injected)
     check(not missing, "CSS 变量引用完整" + (f"，缺失：{missing}" if missing else ""))
     check("--accent" in defined and "--surface" in defined, "CSS 主题令牌存在")

@@ -629,6 +629,13 @@ body.selection-mode .shelf-act { display: none; }
   border-radius: var(--radius-lg);
 }
 .reader__img { position: absolute; left: 0; top: 0; user-select: none; max-width: none; max-height: none; }
+/* 连排模式：整章多页纵向排一列，滚轮原生滚动 */
+.reader__page { width: var(--pw, 100%); margin: 0 auto 6px; line-height: 0; }
+.reader__stage.is-col .reader__img {
+  position: static; display: block; width: 100%; height: auto;
+  max-width: none; max-height: none; background: var(--surface-3);
+}
+.reader__page.is-err { min-height: 120px; }
 .reader__loading { position: absolute; inset: 0; display: grid; place-items: center; }
 .reader__loading::after {
   content: ""; width: 30px; height: 30px; border-radius: 50%;

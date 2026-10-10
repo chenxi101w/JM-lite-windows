@@ -83,6 +83,14 @@ ok(/\bis-cur\b/.test(html), '览图 HTML：当前页高亮');
 ok(html.indexOf('/api/comic/777/page/2?chapter=c1') !== -1, '览图 HTML：图片源带章节参数');
 ok((html.match(/is-cur/g) || []).length === 1, '览图 HTML：仅一个高亮');
 
+/* ── columnIndex（连排模式当前页推算）───────────────────── */
+ok(RL.columnIndex(0, 600, [0, 500, 1200], [500, 700, 800]) === 0, '连排：顶部 → 第 0 页');
+ok(RL.columnIndex(600, 600, [0, 500, 1200], [500, 700, 800]) === 1, '连排：滚到第 2 页内 → 第 1 页（0基）');
+ok(RL.columnIndex(2000, 600, [0, 500, 1200], [500, 700, 800]) === 2, '连排：超出末页 → 夹到最后一页');
+ok(RL.columnIndex(100, 600, [0, 500, 1200], [0, 700, 800]) === 0, '连排：当前页未加载(高0) → 回退最近已加载页');
+ok(RL.columnIndex(0, 600, [], []) === -1, '连排：无页面 → -1');
+ok(RL.columnIndex(0, 0, [0, 500], [400, 600]) === 0, '连排：视口高 0 → 仍按 80px 焦点线推算');
+
 if (failed) {
   console.log('失败 ' + failed + ' 项');
   process.exit(1);
