@@ -20,3 +20,6 @@ startup_error.log
 core/comics.db
 core/comics.db-*
 core/jm_option.yml
+
+# 本地工作记忆（含隐私，勿提交）
+.workbuddy/
