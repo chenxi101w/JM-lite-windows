@@ -23,3 +23,6 @@ core/jm_option.yml
 
 # 本地工作记忆（含隐私，勿提交）
 .workbuddy/
+# 隐私归集目录（仅 README 可提交，其余忽略）
+/private/*
+!/private/README.md
