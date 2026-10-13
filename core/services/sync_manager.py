@@ -22,6 +22,9 @@ from core.models.database import (
     set_system_config,
     touch_comic_status,
 )
+from core.logging_setup import get_logger
+
+log = get_logger("sync_manager")
 
 # 启动自动同步节流：距上次成功同步超过 6 小时才跑（手动「立即同步」不受限）
 AUTO_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000
@@ -85,9 +88,9 @@ class SyncManager:
                 f"✅ 拉回 {result['pulled']} · 推上 {result['pushed']}"
                 f"（服务器新增 {result['new_on_server']}，账本共 {result['server_total']}）",
             )
-            print(f"[Sync] 启动自动同步完成：{result}")
+            log.info(f"[Sync] 启动自动同步完成：{result}")
         except Exception as e:
-            print(f"[Sync] 启动自动同步失败（静默忽略）: {e}")
+            log.warning(f"[Sync] 启动自动同步失败（静默忽略）: {e}")
 
     # ── 核心流程 ───────────────────────────────────────────
     def _do_sync(self) -> dict:

@@ -17,7 +17,10 @@ from PIL import Image
 
 from core.config import BASE_DIR, DOWNLOAD_DIR, TEMP_CACHE_DIR
 from core.models.database import get_image_quality_params
-from core.services.jm_crawler import JMCrawler, DownloadCancelled, get_jm_crawler
+from core.services.jm_crawler import DownloadCancelled, get_jm_crawler
+from core.logging_setup import get_logger
+
+log = get_logger("download_manager")
 
 
 class DownloadManager:
@@ -170,7 +173,7 @@ class DownloadManager:
         except DownloadCancelled:
             raise
         except Exception as e:
-            print(f"真实下载失败 {jm_id}: {e}")
+            log.warning(f"真实下载失败 {jm_id}: {e}")
             raise RuntimeError(f"真实下载失败: {e}") from e
 
     async def recover_temp_downloads(self):
@@ -193,10 +196,10 @@ class DownloadManager:
                 imgs = comic_manager._collect_images_recursive(temp_dir)
                 if not imgs:
                     continue
-                print(f"恢复临时下载: {jm_id}（{len(imgs)} 张图片）")
+                log.info(f"恢复临时下载: {jm_id}（{len(imgs)} 张图片）")
                 await self._finalize_recovered(jm_id, temp_dir, imgs, comic_manager)
         except Exception as e:
-            print(f"恢复临时下载失败: {e}")
+            log.warning(f"恢复临时下载失败: {e}")
 
     async def _finalize_recovered(self, jm_id: int, temp_dir: str, imgs: list,
                                   comic_manager) -> None:
@@ -241,9 +244,9 @@ class DownloadManager:
                 shutil.rmtree(temp_dir)
             except Exception:
                 pass
-            print(f"已恢复漫画 {jm_id} -> {comic_dir}")
+            log.info(f"已恢复漫画 {jm_id} -> {comic_dir}")
         except Exception as e:
-            print(f"补完漫画 {jm_id} 失败: {e}")
+            log.warning(f"补完漫画 {jm_id} 失败: {e}")
 
     def _recompress_images(self, comic_dir: str, quality: int, subsampling) -> None:
         """按图像质量设置重压缩已落库的漫画图片（封面不处理）。"""
@@ -279,7 +282,7 @@ class DownloadManager:
             quality, subsampling = get_image_quality_params()
             image.save(save_path, "JPEG", quality=quality, subsampling=subsampling)
         except Exception as e:
-            print(f"异步下载图片失败 {url}: {e}")
+            log.warning(f"异步下载图片失败 {url}: {e}")
 
     async def _save_comic_info(self, comic_dir: str, comic_info: dict):
         """保存漫画元信息到 info.json。"""
@@ -296,7 +299,7 @@ class DownloadManager:
             with open(os.path.join(comic_dir, "info.json"), "w", encoding="utf-8") as f:
                 json.dump(save_info, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"保存漫画信息失败: {e}")
+            log.warning(f"保存漫画信息失败: {e}")
 
     async def _ensure_files_ready(self, comic_dir: str, jm_id: int):
         """等待文件落盘后写入数据库。"""
@@ -336,7 +339,7 @@ class DownloadManager:
                 await asyncio.sleep(1)
                 wait_time += 1
 
-            print(f"漫画 {jm_id} 文件准备就绪，共 {len(required_files)} 个文件")
+            log.info(f"漫画 {jm_id} 文件准备就绪，共 {len(required_files)} 个文件")
 
             from core.services.comic_manager import ComicManager
             comic_manager = ComicManager()
@@ -349,9 +352,9 @@ class DownloadManager:
             comic_info["id"] = jm_id
             success = comic_manager.add_downloaded_comic(jm_id, comic_info)
             if success:
-                print(f"漫画 {jm_id} 已添加到数据库")
+                log.info(f"漫画 {jm_id} 已添加到数据库")
             else:
-                print(f"漫画 {jm_id} 添加到数据库失败")
+                log.warning(f"漫画 {jm_id} 添加到数据库失败")
 
         except Exception as e:
-            print(f"确保文件准备就绪失败 {jm_id}: {e}")
+            log.warning(f"确保文件准备就绪失败 {jm_id}: {e}")

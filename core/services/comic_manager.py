@@ -5,7 +5,6 @@
 阅读进度；去掉回收站（轻量版删即删）。
 """
 
-import json
 import os
 import re
 import shutil
@@ -22,6 +21,9 @@ from core.models.database import (
     get_all_comic_categories,
     set_status_bits,
 )
+from core.logging_setup import get_logger
+
+log = get_logger("comic_manager")
 
 
 class ComicManager:
@@ -192,7 +194,7 @@ class ComicManager:
                 pass
             return True
         except Exception as e:
-            print(f"添加已下载漫画失败 {jm_id}: {e}")
+            log.warning(f"添加已下载漫画失败 {jm_id}: {e}")
             return False
 
     # 书架排序白名单（键 → ORDER BY 片段；键值来自系统配置 shelf_sort，防注入）
@@ -343,7 +345,7 @@ class ComicManager:
             album = client.get_album_detail(jm_id)
             order = [str(p.photo_id) for p in album]
         except Exception as e:
-            print(f"从JM获取章节顺序失败 {jm_id}: {e}")
+            log.warning(f"从JM获取章节顺序失败 {jm_id}: {e}")
             order = None
         if use_cache:
             self._chapter_order_cache[jm_id] = order
@@ -468,7 +470,7 @@ class ComicManager:
             set_status_bits(jm_id, clear=BIT_LOCAL)
             return True
         except Exception as e:
-            print(f"彻底删除漫画失败 {jm_id}: {e}")
+            log.warning(f"彻底删除漫画失败 {jm_id}: {e}")
             return False
 
     def delete_comic(self, jm_id: int) -> bool:

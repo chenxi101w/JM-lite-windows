@@ -17,6 +17,9 @@ from core.models.database import (
     note_subscription_update,
 )
 from core.services.filter_service import expand_author
+from core.logging_setup import get_logger
+
+log = get_logger("subscription")
 
 SUB_POLL_INTERVAL_SECONDS = 3600   # 正式间隔 1 小时
 SUB_POLL_START_DELAY = 180         # 启动后 3 分钟首次巡检（等网络/代理就绪）
@@ -34,7 +37,7 @@ def poll_all(jm_crawler) -> dict:
     try:
         subs = get_subscriptions()
     except Exception as e:
-        print(f"[SubPoll] 读订阅列表失败: {e}")
+        log.warning(f"[SubPoll] 读订阅列表失败: {e}")
         return {"checked": 0, "added_new": 0, "authors_with_new": 0, "error": str(e)}
 
     checked = 0
@@ -58,7 +61,7 @@ def poll_all(jm_crawler) -> dict:
                 try:
                     res = crawler.search_by_author(a, max_total=SUB_POLL_AUTHOR_LIMIT) or []
                 except Exception as e2:
-                    print(f"[SubPoll] 作者搜索异常 '{a}': {e2}")
+                    log.warning(f"[SubPoll] 作者搜索异常 '{a}': {e2}")
                     continue
                 for c in res:
                     cid = int(c.get("id") or 0)
@@ -91,7 +94,7 @@ def poll_all(jm_crawler) -> dict:
                                       cover_url=cover_url, found_at=now_ms,
                                       ignore_duplicate=True)
                 except Exception as ie:
-                    print(f"[SubPoll] 插入新作记录失败 '{author}' id={cid}: {ie}")
+                    log.warning(f"[SubPoll] 插入新作记录失败 '{author}' id={cid}: {ie}")
                     continue
                 delta += 1
                 last_title = title
@@ -104,14 +107,14 @@ def poll_all(jm_crawler) -> dict:
                 note_subscription_checked(author, now_ms)
             checked += 1
         except Exception as e:
-            print(f"[SubPoll] 巡检作者 '{author}' 失败: {e}")
+            log.warning(f"[SubPoll] 巡检作者 '{author}' 失败: {e}")
             continue
 
     summary = {"checked": checked, "added_new": added_new, "authors_with_new": authors_with_new}
     if added_new:
-        print(f"[SubPoll] 巡检完成：检查 {checked} 位作者，新增 {added_new} 条新作（{authors_with_new} 位有更新）")
+        log.info(f"[SubPoll] 巡检完成：检查 {checked} 位作者，新增 {added_new} 条新作（{authors_with_new} 位有更新）")
     else:
-        print(f"[SubPoll] 巡检完成：检查 {checked} 位作者，无新增。")
+        log.info(f"[SubPoll] 巡检完成：检查 {checked} 位作者，无新增。")
     return summary
 
 
@@ -122,7 +125,7 @@ def schedule(jm_crawler) -> None:
             crawler = jm_crawler() if callable(jm_crawler) else jm_crawler
             poll_all(crawler)
         except Exception as e:
-            print(f"[SubPoll] 例行巡检异常: {e}")
+            log.warning(f"[SubPoll] 例行巡检异常: {e}")
         finally:
             t = threading.Timer(SUB_POLL_INTERVAL_SECONDS, _run)
             t.daemon = True

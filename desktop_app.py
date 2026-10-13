@@ -22,6 +22,9 @@ import ctypes
 from pathlib import Path
 
 from werkzeug.serving import make_server
+from core.logging_setup import get_logger
+
+log = get_logger("desktop")
 
 
 APP_NAME = "JMComicLite"
@@ -212,7 +215,6 @@ class NativeSplash:
     def _run(self):
         try:
             user32 = ctypes.windll.user32
-            gdi32 = ctypes.windll.gdi32
             kernel32 = ctypes.windll.kernel32
             WNDPROC = ctypes.WINFUNCTYPE(
                 ctypes.c_long, ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p
@@ -428,8 +430,8 @@ def _open_window(url: str, base_dir: Path, boot_backend=None, native_splash=None
     try:
         import webview
     except ImportError:
-        print("未安装 pywebview，回退到浏览器模式。")
-        print(f"当前数据目录: {base_dir}")
+        log.info("未安装 pywebview，回退到浏览器模式。")
+        log.info(f"当前数据目录: {base_dir}")
         if boot_backend:
             boot_backend()
         if native_splash is not None:
@@ -500,7 +502,7 @@ def _open_window(url: str, base_dir: Path, boot_backend=None, native_splash=None
     except Exception as exc:
         tb = traceback.format_exc()
         _log_error(f"[回退浏览器] pywebview 启动失败: {exc}\n{tb}")
-        print(f"pywebview 启动失败，已回退到浏览器模式: {exc}")
+        log.warning(f"pywebview 启动失败，已回退到浏览器模式: {exc}")
         if native_splash is not None:
             try:
                 native_splash.close()
@@ -508,7 +510,7 @@ def _open_window(url: str, base_dir: Path, boot_backend=None, native_splash=None
                 pass
         if boot_backend:
             boot_backend()                        # 幂等，确保服务在跑
-        print(f"请用浏览器打开: {url}")
+        log.info(f"请用浏览器打开: {url}")
         webbrowser.open(url)
         try:
             while True:
@@ -532,11 +534,11 @@ def _register_startup_workers():
             try:
                 asyncio.run(DownloadManager().recover_temp_downloads())
             except Exception as e:
-                print(f"启动恢复临时下载失败: {e}")
+                log.warning(f"启动恢复临时下载失败: {e}")
 
         threading.Thread(target=_startup_recover, daemon=True).start()
     except Exception as e:
-        print(f"注册启动恢复失败: {e}")
+        log.warning(f"注册启动恢复失败: {e}")
 
     try:
         from core.services.sync_manager import SyncManager
@@ -545,11 +547,11 @@ def _register_startup_workers():
             try:
                 SyncManager().auto_sync_if_due()
             except Exception as e:
-                print(f"启动云同步失败: {e}")
+                log.warning(f"启动云同步失败: {e}")
 
         threading.Thread(target=_startup_sync, daemon=True).start()
     except Exception as e:
-        print(f"注册启动云同步失败: {e}")
+        log.warning(f"注册启动云同步失败: {e}")
 
     try:
         from core.services import recycle as recycle_service
@@ -559,24 +561,26 @@ def _register_startup_workers():
             try:
                 n = recycle_service.purge_expired(ComicManager())
                 if n:
-                    print(f"[Recycle] 启动到期清理完成：{n} 本")
+                    log.info(f"[Recycle] 启动到期清理完成：{n} 本")
             except Exception as e:
-                print(f"启动回收站检查失败: {e}")
+                log.warning(f"启动回收站检查失败: {e}")
 
         threading.Thread(target=_startup_recycle_purge, daemon=True).start()
     except Exception as e:
-        print(f"注册启动回收站检查失败: {e}")
+        log.warning(f"注册启动回收站检查失败: {e}")
 
 
 def _preheat_backend():
     """后台预热：重模块已惰性化（启动提速），这里提前加载 + 预构造 crawler/client
     （含域名更新），用户点搜索/下载时零等待。失败静默。"""
     try:
-        import jmcomic  # noqa: F401  预热重模块
+        # 预热重模块（用 importlib 显式调用，避免「import 了但没引用」的静态告警）
+        import importlib
+        importlib.import_module("jmcomic")
         from core.services.jm_crawler import get_jm_crawler
         get_jm_crawler()._get_client()
     except Exception as e:
-        print(f"启动预热失败: {e}")
+        log.warning(f"启动预热失败: {e}")
 
 
 def run_desktop():
@@ -624,4 +628,4 @@ if __name__ == "__main__":
             _log_error("[致命错误] 启动失败:\n" + tb)
         except Exception:
             pass
-        print(tb)
+        log.error(tb)

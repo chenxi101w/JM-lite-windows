@@ -10,7 +10,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/chenxi101w/JM-lite-windows?label=release&color=blue&cacheSeconds=60)](../../releases)
 [![Downloads](https://img.shields.io/github/downloads/chenxi101w/JM-lite-windows/total?label=downloads&color=orange&cacheSeconds=60)](../../releases)
-[![Tests](https://img.shields.io/badge/selftest-98%2B%20asserts-brightgreen)](tools/selftest_lite.py)
+[![Tests](https://img.shields.io/badge/selftest-114%2B%20asserts-brightgreen)](tools/selftest_lite.py)
 
 ---
 
@@ -63,7 +63,7 @@
 ## 🧪 质量保障
 
 ```bat
-tools\selftest_lite.py   :: 工程自检（98+ 项断言）
+tools\selftest_lite.py   :: 工程自检（114+ 项断言）
 tools\smoke_test.py      :: 接口冒烟（40+ 项）
 tools\verify_live.py     :: 实机端到端（启动→功能→重启持久化）
 ```

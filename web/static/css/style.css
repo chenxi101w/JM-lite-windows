@@ -159,7 +159,7 @@ img { display: block; max-width: 100%; }
 ::selection { background: var(--accent-soft-strong); }
 /* hidden 属性必须永远生效（类选择器上的 display:flex/grid 会压过 UA 默认规则） */
 [hidden] { display: none !important; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--focus-radius, var(--radius-xs)); }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -873,3 +873,39 @@ body.selection-mode .shelf-act { display: none; }
 
 /* hidden 守卫：作者样式会覆盖 [hidden]，必须显式关闭 */
 .reader__stage[hidden], .reader__grid[hidden], .reader__rail[hidden] { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════════
+   UI 打磨（轻度优化）—— 只做叠加，不改既有观感
+   ① 滚动稳定  ② 焦点环随形  ③ 网格错峰入场
+   ④ 卡片按下反馈  ⑤ 尊重系统「减少动效」
+   ═══════════════════════════════════════════════════════════ */
+
+/* ① 主区滚动条常驻占位 + 阻断滚动链穿透：列表长短变化时内容不再横向抖动 */
+.main { scrollbar-gutter: stable; overscroll-behavior: contain; }
+
+/* ② 焦点环跟随控件自身形状（此前统一按小圆角描边，胶囊按钮上会「跳形」） */
+.btn:focus-visible, .seg-item:focus-visible, .chip:focus-visible,
+.icon-btn:focus-visible, .card-dl:focus-visible, .shelf-act:focus-visible {
+  --focus-radius: var(--radius-pill);
+}
+.side-item:focus-visible { --focus-radius: var(--radius-sm); }
+.modal__close:focus-visible, .swatch:focus-visible { --focus-radius: 50%; }
+
+/* ③ 网格错峰入场：按序号错开一点，长列表不额外变慢（复用已有 fadeUp） */
+.comic-grid > .comic-card:nth-child(2n) { animation-delay: .035s; }
+.comic-grid > .comic-card:nth-child(3n) { animation-delay: .07s; }
+.comic-grid > .comic-card:nth-child(4n) { animation-delay: .105s; }
+
+/* ④ 卡片按下即时反馈（悬停已有上浮，这里补一次轻回弹） */
+.comic-card:active { transform: translateY(-1px) scale(.994); }
+
+/* ⑤ 无障碍：系统开启「减少动效」时，动画/过渡一律瞬完 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .main { scroll-behavior: auto; }
+  .comic-card:hover { transform: none; }
+}

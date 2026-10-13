@@ -181,11 +181,16 @@ def main():
     check((r.get_json() or {}).get("success"), "关于：版本与数据目录接口可用")
 
     # ── 升级：云同步（离线检查，不触网） ──
+    # 注意：早期版本这里断言「预填地址 / 预填密钥」，但同步服务器地址与密钥属
+    # 敏感配置——默认值早已改为空串（由用户在设置页自行填写），且任何情况下都
+    # 不该内嵌密钥（曾因此泄漏过一次）。断言改为校验真实契约 + 锁死该安全属性。
     r = client.get("/api/sync/status")
     sd = (r.get_json() or {}).get("data") or {}
-    check(r.status_code == 200 and str(sd.get("server_url", "")).startswith("http"),
-          "云同步：状态接口与预填地址 OK")
-    check(bool(sd.get("token_masked")), "云同步：密钥预填（遮罩返回）OK")
+    check(r.status_code == 200 and (r.get_json() or {}).get("success") is True
+          and "server_url" in sd and "enabled" in sd,
+          "云同步：状态接口可用且字段完整")
+    check(sd.get("server_url") == "" and not sd.get("token_masked"),
+          "云同步：默认不内嵌凭据（地址为空、无密钥遮罩）")
 
     # ── 升级：回收站全流程（假 id 走账本） ──
     from core.models.database import touch_comic_status

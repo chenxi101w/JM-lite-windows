@@ -60,7 +60,13 @@
 </div>
 <script src="{{ url_for('static', filename='js/reader-logic.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/library-drag-logic.js') }}?v={{ app_version }}"></script>
-<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/core.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/ui.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/search.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/downloads.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/reader.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/library.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/settings.js') }}?v={{ app_version }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

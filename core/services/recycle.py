@@ -25,6 +25,9 @@ from core.models.database import (
     set_status_bits,
     _get_conn,
 )
+from core.logging_setup import get_logger
+
+log = get_logger("recycle")
 
 RECYCLE_GRACE_DAYS = 7
 _GRACE_MS = RECYCLE_GRACE_DAYS * 24 * 60 * 60 * 1000
@@ -43,7 +46,7 @@ def keep_cover(jm_id: int, comic_dir: str) -> None:
             os.makedirs(TEMP_CACHE_DIR, exist_ok=True)
             shutil.copy2(src, dst)
     except Exception as e:
-        print(f"保留封面失败 {jm_id}: {e}")
+        log.warning(f"保留封面失败 {jm_id}: {e}")
 
 
 def _delete_local_only(jm_id: int, comic_manager) -> None:
@@ -70,7 +73,7 @@ def trash_local(jm_id: int, comic_manager) -> bool:
         set_recycle_mark(jm_id, int(time.time() * 1000))
         return True
     except Exception as e:
-        print(f"移入回收站失败 {jm_id}: {e}")
+        log.warning(f"移入回收站失败 {jm_id}: {e}")
         return False
 
 
@@ -79,7 +82,7 @@ def mark_finished(jm_id: int) -> None:
     try:
         set_recycle_mark(jm_id, int(time.time() * 1000))
     except Exception as e:
-        print(f"看完入回收标记失败 {jm_id}: {e}")
+        log.warning(f"看完入回收标记失败 {jm_id}: {e}")
 
 
 def renew(jm_id: int) -> None:
@@ -97,7 +100,7 @@ def restore(jm_id: int) -> bool:
         set_recycle_mark(jm_id, None)
         return True
     except Exception as e:
-        print(f"恢复失败 {jm_id}: {e}")
+        log.warning(f"恢复失败 {jm_id}: {e}")
         return False
 
 
@@ -120,7 +123,7 @@ def purge_one(jm_id: int, comic_manager) -> bool:
             pass
         return True
     except Exception as e:
-        print(f"彻底删除失败 {jm_id}: {e}")
+        log.warning(f"彻底删除失败 {jm_id}: {e}")
         return False
 
 
@@ -138,9 +141,9 @@ def purge_expired(comic_manager) -> int:
         try:
             _delete_local_only(jm_id, comic_manager)
             purged += 1
-            print(f"[Recycle] 宽限到期，已清除本地内容：{jm_id}")
+            log.info(f"[Recycle] 宽限到期，已清除本地内容：{jm_id}")
         except Exception as e:
-            print(f"[Recycle] 到期清理失败 {jm_id}: {e}")
+            log.warning(f"[Recycle] 到期清理失败 {jm_id}: {e}")
     return purged
 
 

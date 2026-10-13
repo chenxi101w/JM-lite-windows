@@ -7,7 +7,6 @@
 - ensure_aliases_seeded(): 把内置种子同义词幂等写入 aliases 表，让展开开箱即用。
 """
 
-import re
 from typing import Dict, List
 
 from core.models.database import (
@@ -16,6 +15,9 @@ from core.models.database import (
     normalize_author,
     upsert_alias,
 )
+from core.logging_setup import get_logger
+
+log = get_logger("filter_service")
 
 # 内置种子同义词（canonical 在前，其余为别名）。启动时幂等入库。
 SEED_SYNONYMS: Dict[str, List] = {
@@ -42,7 +44,7 @@ def ensure_aliases_seeded() -> None:
                     if a and a != canon:
                         upsert_alias(type_, a, canon)
     except Exception as e:
-        print(f"种子同义词入库失败: {e}")
+        log.warning(f"种子同义词入库失败: {e}")
 
 
 def postprocess_results(results: List[dict]) -> List[dict]:

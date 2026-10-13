@@ -1,0 +1,16 @@
+# 统一换行符：跨会话 / 跨工具协作时避免「整文件 diff」噪音
+* text=auto eol=lf
+
+# Windows 批处理必须 CRLF（cmd 对 LF 的 goto/标签解析不可靠）
+*.bat text eol=crlf
+
+# 二进制，不做换行转换
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.zip binary
+*.exe binary
+*.db binary

@@ -1,5 +1,14 @@
 # 更新日志（CHANGELOG）
 
+2026-10-13 2.14.0
+移植准则试运行项目（project/test）的全部重构成果（行为等价移植，功能面不变：54 条 API 路由、7 个页面）
+后端：core/app.py 1510 行拆为 43 行应用工厂 + core/web/ 蓝图包（8 文件）；新增 core/logging_setup.py 统一日志，全项目清除裸 print 78 处
+下载引擎：core/services/jm_crawler.py（1310 行）拆为同名包（session/option/cache/search/download/crawler 六模块），对外名字不变
+前端：web/static/js/app.js（2656 行）拆为 9 个命名空间模块，模板引用同步更新
+工具：selftest_lite.py 升级至 114+ 项断言并内建 pyflakes 静态闸门；新增 test_frontend_bundle.js 前端模块束冒烟；smoke_test 云同步断言改为「默认不内嵌凭据」
+文档：补齐 ARCHITECTURE.md 与 project_overview.md（三件套齐）；本条目起改用「日期 版本号」行格式（历史条目保留原样）
+新增 .gitattributes 锁定 LF；版本号自本版起按三段 MAJOR.MINOR.PATCH 口径升位（重构 → MINOR）
+
 ## v2.13.10 — 2026-10-10
 
 > **阅读页双进度条修复 + 收藏改爱心**。

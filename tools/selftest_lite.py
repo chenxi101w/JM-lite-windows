@@ -30,18 +30,52 @@ def check(cond: bool, label: str):
         print(f"[OK ] {label}")
 
 
+def backend_src() -> str:
+    """后端全部源码拼接。
+
+    原先只读 core/app.py；拆分为 core/web/* 蓝图后改为按「后端整体」校验，
+    断言不再绑死单文件（今后再挪代码也不会假失败）。
+    """
+    chunks = []
+    for dp, dirs, files in os.walk(os.path.join(ROOT, "core")):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        for f in sorted(files):
+            if f.endswith(".py"):
+                chunks.append(open(os.path.join(dp, f), encoding="utf-8").read())
+    return "\n".join(chunks)
+
+
+def frontend_src() -> str:
+    """前端全部脚本拼接（除两个纯逻辑模块）。
+
+    原先只读 web/static/js/app.js；单体拆成 core/ui/search/downloads/reader/
+    library/settings 七个命名空间模块后，前端断言也改为按「前端整体」校验。
+    reader-logic.js / library-drag-logic.js 是独立纯逻辑模块，另有专属单测，
+    这里同样纳入拼接，保证「已砍功能无残留」这类全局断言仍然有效。
+    """
+    jdir = os.path.join(ROOT, "web", "static", "js")
+    return "\n".join(open(os.path.join(jdir, f), encoding="utf-8").read()
+                     for f in sorted(os.listdir(jdir)) if f.endswith(".js"))
+
+
 # ── A. 工程文件完整性 ─────────────────────────────────────
 REQUIRED_FILES = [
     "VERSION", "desktop_app.py", "README.md",
-    "core/__init__.py", "core/config.py", "core/app.py",
+    "core/__init__.py", "core/config.py", "core/app.py", "core/logging_setup.py",
+    "core/web/__init__.py", "core/web/common.py", "core/web/pages.py",
+    "core/web/system.py", "core/web/search.py", "core/web/downloads.py",
+    "core/web/reader.py", "core/web/library.py", "core/web/subscriptions.py",
     "core/models/__init__.py", "core/models/database.py",
-    "core/services/__init__.py", "core/services/jm_crawler.py",
+    "core/services/__init__.py", "core/services/jm_crawler/__init__.py",
     "core/services/comic_manager.py", "core/services/download_manager.py",
     "core/services/filter_service.py", "core/services/subscription.py",
     "web/templates/base.html", "web/templates/search.html", "web/templates/library.html",
     "web/templates/downloads.html", "web/templates/reader.html", "web/templates/settings.html",
     "web/static/img/no_cover.svg",
-    "web/static/js/app.js", "web/static/js/reader-logic.js", "web/static/js/library-drag-logic.js",
+    "web/static/js/reader-logic.js", "web/static/js/library-drag-logic.js",
+    "web/static/js/core.js", "web/static/js/ui.js", "web/static/js/search.js",
+    "web/static/js/downloads.js", "web/static/js/reader.js", "web/static/js/library.js",
+    "web/static/js/settings.js",
     "web/static/css/style.css", "web/static/img/app_icon.ico",
     "build/JMComicLite.spec", "build/_build.py", "build/requirements.txt",
     "docs/CHANGELOG.md", "docs/已知坑与发版铁律.md",
@@ -72,14 +106,43 @@ def test_python_syntax():
     check(not bad, f"Python 语法（{len(py_files)} 个文件）" + (f"，失败：{bad}" if bad else ""))
 
 
+# ── B2. 静态 lint（pyflakes）───────────────────────────────
+def test_lint():
+    """静态 lint —— 专治「文本断言看不见的错误」。
+
+    背景：曾出现 core/web/library.py 用了 get_system_config 却没 import，
+    接口静默返回 success=False；而源码文本断言只查「字符串在不在」，
+    查不出符号未导入，test_routes 也只判 status_code==200，双双漏过。
+    pyflakes 能直接报 undefined name / 未使用导入，是这类 bug 的正解。
+
+    未安装 pyflakes 时跳过（不阻塞），装了就必须零告警。
+    """
+    try:
+        import importlib.util
+        if importlib.util.find_spec("pyflakes") is None:
+            raise ImportError
+    except ImportError:
+        print("[SKIP] pyflakes 未安装，跳过静态 lint（建议：pip install pyflakes）")
+        return
+    targets = [t for t in ("core", "desktop_app.py", "build", "tools")
+               if os.path.exists(os.path.join(ROOT, t))]
+    r = subprocess.run([sys.executable, "-m", "pyflakes", *targets],
+                       capture_output=True, text=True, timeout=180, cwd=ROOT)
+    out = (r.stdout or "").strip()
+    check(not out, "静态 lint：pyflakes 零告警" + ("\n" + out if out else ""))
+
+
 # ── C. 路由冒烟 ────────────────────────────────────────────
 def test_routes():
     from core.app import app
     client = app.test_client()
     # 启动惰性：import 阶段不应构造 JMCrawler（此前会在 import 同步加载大缓存拖慢启动）
-    from core.app import jm_crawler as _jc_global, get_jm_crawler as _gjc
-    check(_jc_global is None, "启动：jm_crawler 惰性未创建（import 阶段为 None）")
-    check(_gjc() is not None, "get_jm_crawler：可惰性构造单例")
+    # 拆分蓝图后，模块级单例改为 core/services/jm_crawler 内的 _jm_crawler_instance，
+    # 路由层经 core.web.common re-export get_jm_crawler；这里直接盯住真实单例变量。
+    from core.services import jm_crawler as _jcmod
+    check(getattr(_jcmod, "_jm_crawler_instance", None) is None,
+          "启动：jm_crawler 惰性未创建（import 阶段为 None）")
+    check(_jcmod.get_jm_crawler() is not None, "get_jm_crawler：可惰性构造单例")
     pages = ["/", "/search", "/library", "/downloads", "/reader/123", "/settings"]
     for p in pages:
         r = client.get(p, follow_redirects=True)
@@ -102,8 +165,8 @@ def test_routes():
 
 # ── D. 前端符号 ───────────────────────────────────────────
 def test_js_symbols():
-    js = open(os.path.join(ROOT, "web/static/js/app.js"), encoding="utf-8").read()
-    app_src = open(os.path.join(ROOT, "core/app.py"), encoding="utf-8").read()
+    js = frontend_src()
+    app_src = backend_src()
     required = [
         "initSearchPage", "initDownloadsPage", "initReaderPage",
         "initLibraryPage", "initSettingsPage",
@@ -161,9 +224,12 @@ def test_js_symbols():
 
 # ── D2. 下载契约（并发 / 回调 / 进度 / 网络 / 日志 / 状态）──
 def test_download_tuning():
-    crawler = open(os.path.join(ROOT, "core/services/jm_crawler.py"), encoding="utf-8").read()
-    app = open(os.path.join(ROOT, "core/app.py"), encoding="utf-8").read()
-    js = open(os.path.join(ROOT, "web/static/js/app.js"), encoding="utf-8").read()
+    _pkg = os.path.join(ROOT, "core/services/jm_crawler")
+    _pkg_files = sorted(f for f in os.listdir(_pkg) if f.endswith(".py"))
+    crawler = "\n".join(open(os.path.join(_pkg, f), encoding="utf-8").read() for f in _pkg_files)
+    crawler_pkg = {f: open(os.path.join(_pkg, f), encoding="utf-8").read() for f in _pkg_files}
+    app = backend_src()
+    js = frontend_src()
 
     # 并发：真实开关是 threading.image/photo；max_workers 幽灵键、batch_count 旧别名必须清理
     check("DOWNLOAD_IMAGE_CONCURRENCY" in crawler and "DOWNLOAD_PHOTO_CONCURRENCY" in crawler
@@ -264,7 +330,9 @@ def test_download_tuning():
     check('id="setSearchColsSeg"' in set_html, "设置页搜索列数控件")
     check("setSearchColsSeg" in js and "applySearchCols" in js, "搜索页应用列数 + 设置绑定")
     # 启动提速：重包惰性化 + 预热
-    check("import jmcomic" not in crawler.split("class JMCrawler")[0], "jm_crawler 顶部无重包 import（惰性化）")
+    heavy = [f for f, src in crawler_pkg.items() for ln in src.splitlines()
+             if ln.startswith(("import jmcomic", "from jmcomic", "import requests", "from requests"))]
+    check(not heavy, "jm_crawler 包内无顶层重包 import（惰性化）" + (f"：{heavy}" if heavy else ""))
     check("_preheat" in open(os.path.join(ROOT, "desktop_app.py"), encoding="utf-8").read(),
           "desktop_app 启动预热线程")
     desktop_src = open(os.path.join(ROOT, "desktop_app.py"), encoding="utf-8").read()
@@ -308,7 +376,7 @@ def test_download_tuning():
 
 # ── D3. 关于页存储明细契约 ─────────────────────────────────
 def test_about_storage():
-    app = open(os.path.join(ROOT, "core/app.py"), encoding="utf-8").read()
+    app = backend_src()
     check("def _scan_storage" in app, "存储扫描函数已定义")
     check('"storage_items"' in app, "/api/about 返回 storage_items 明细")
     check('"DownloadedComics"' in app and '"TempCache"' in app
@@ -318,7 +386,7 @@ def test_about_storage():
     html = open(os.path.join(ROOT, "web/templates/settings.html"), encoding="utf-8").read()
     check('id="aboutStorageList"' in html, "关于页有存储明细容器")
     check('id="aboutStorageTotal"' in html, "关于页有总计行")
-    js = open(os.path.join(ROOT, "web/static/js/app.js"), encoding="utf-8").read()
+    js = frontend_src()
     check("storage_items" in js and "storage-row__bar" in js, "前端渲染存储明细（含占比条）")
     css = open(os.path.join(ROOT, "web/static/css/style.css"), encoding="utf-8").read()
     check(".storage-list" in css and ".storage-row__bar" in css, "存储明细样式存在")
@@ -376,12 +444,12 @@ def test_reader_logic():
     """
     base_html = open(os.path.join(ROOT, "web/templates/base.html"), encoding="utf-8").read()
     check("js/reader-logic.js" in base_html
-          and base_html.index("js/reader-logic.js") < base_html.index("js/app.js"),
-          "reader-logic.js 先于 app.js 加载")
-    js = open(os.path.join(ROOT, "web/static/js/app.js"), encoding="utf-8").read()
+          and base_html.index("js/reader-logic.js") < base_html.index("js/core.js"),
+          "reader-logic.js 先于业务脚本（core.js 起）加载")
+    js = frontend_src()
     check("ReaderLogic.resolveWheelAction" in js and "ReaderLogic.railIndex" in js
           and "ReaderLogic.buildOverviewHtml" in js,
-          "app.js 使用纯逻辑模块（不再是内联实现）")
+          "前端使用纯逻辑模块（不再是内联实现）")
 
     node = shutil.which("node")
     if not node:
@@ -417,6 +485,33 @@ def test_reader_logic():
           ("" if r2.returncode == 0 else "\n" + (r2.stdout or "")[-500:]))
 
 
+# ── G2. 前端模块束冒烟（node 真加载）────────────────────────
+def test_frontend_bundle():
+    """在最小 DOM 桩上按 base.html 顺序真实加载 7 个前端模块。
+
+    对治「拆模块后漏带前导依赖」：静态正则看不出 `var x = JM.x` 写漏，
+    而这里会让模块真的执行一遍——加载期/初始化期的 ReferenceError 必现。
+    """
+    script = os.path.join(ROOT, "tools/test_frontend_bundle.js")
+    if not os.path.exists(script):
+        check(False, "tools/test_frontend_bundle.js 存在")
+        return
+    node = shutil.which("node")
+    if not node:
+        import glob
+        hits = sorted(glob.glob(os.path.expanduser(
+            "~/.workbuddy/binaries/node/versions/*/node.exe")))
+        node = hits[-1] if hits else "node"
+    try:
+        r = subprocess.run([node, script], capture_output=True, text=True, timeout=60)
+    except Exception as e:
+        check(False, f"前端模块束冒烟无法执行：{e}")
+        return
+    n_ok = (r.stdout or "").count("[OK ]")
+    check(r.returncode == 0, f"前端模块束加载（node 真跑，{n_ok} 项）" +
+          ("" if r.returncode == 0 else "\n" + (r.stdout or "")[-600:]))
+
+
 # ── H. 进度模型契约（直驱 cb，零网络）──────────────────────
 def test_progress_model():
     """进度模型契约测试：批间连续 + 全程单调（直驱 _JmProgressCallback）。
@@ -440,6 +535,7 @@ def main():
     print("=" * 56)
     test_files()
     test_python_syntax()
+    test_lint()
     test_routes()
     test_js_symbols()
     test_download_tuning()
@@ -447,6 +543,7 @@ def main():
     test_templates()
     test_css_vars()
     test_reader_logic()
+    test_frontend_bundle()
     test_progress_model()
 
     total = len(REQUIRED_FILES) + 1 + 6 + 10 + (15 + 6) + (len(["base.html", "search.html", "library.html", "downloads.html", "reader.html", "settings.html"]) * 1 + 5 + 13) + 3  # 估算展示用
