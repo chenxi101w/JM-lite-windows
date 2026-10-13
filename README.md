@@ -19,12 +19,14 @@
 > 将以下截图放入 `assets/screenshots/` 目录即可显示（文件名已对应）：
 > `home.png`（主页·书架） · `search.png`（搜索） · `reader.png`（阅读器·连排/缩放） · `library.png`（分类树·回收站）
 
+<!-- 截图就位后取消本注释
 <p align="center">
   <img src="assets/screenshots/home.png" width="720" alt="主页·书架"/>
   <img src="assets/screenshots/search.png" width="720" alt="搜索"/>
   <img src="assets/screenshots/reader.png" width="720" alt="阅读器"/>
   <img src="assets/screenshots/library.png" width="720" alt="书架与分类树"/>
 </p>
+-->
 
 ## ✨ 功能一览
 
