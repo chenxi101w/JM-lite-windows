@@ -26,3 +26,6 @@ core/jm_option.yml
 # 隐私归集目录（仅 README 可提交，其余忽略）
 /private/*
 !/private/README.md
+
+# 试验田目录（jmtest，准则试运行）：含运行时数据，不入库
+test/
